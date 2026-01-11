@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import "../globals.css";
-import { FaWhatsapp, FaPhoneAlt, FaEnvelope, FaMapMarkerAlt } from "react-icons/fa";
+import { FaPhoneAlt, FaEnvelope, FaMapMarkerAlt, FaClock } from "react-icons/fa";
 import { X } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
@@ -18,6 +18,7 @@ const REQUIREMENTS = [
 export default function ContactPage() {
   const [events, setEvents] = useState([{ name: "", requirements: [] }]);
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -53,6 +54,7 @@ export default function ContactPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
+          email,
           phone,
           startDate,
           endDate,
@@ -72,6 +74,7 @@ export default function ContactPage() {
         
         // Reset form
         setName("");
+        setEmail("");
         setPhone("");
         setStartDate("");
         setEndDate("");
@@ -174,6 +177,15 @@ export default function ContactPage() {
                 />
               </div>
 
+              <label>Email address</label>
+              <input 
+                type="email"
+                value={email} 
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="Enter your email address"
+              />
+
               {events.map((event, i) => (
                 <div key={i} className="event-box">
                   <div className="event-header">
@@ -264,35 +276,131 @@ export default function ContactPage() {
 
           {/* RIGHT SIDE – CONTACT DETAILS */}
           <div className="contact-info">
-            <h2>Contact Details</h2>
+            <h2>Get in Touch</h2>
+            <p style={{ color: '#6b7280', marginBottom: '30px', fontSize: '15px', lineHeight: '1.5' }}>
+              Have questions? We're here to help! Reach out to us through any of the channels below.
+            </p>
 
-            <div className="info-item">
-              <FaPhoneAlt />
-              <span>+91 98765 43210</span>
+           
+
+            {/* Phone */}
+            <div style={{ 
+              backgroundColor: '#f0fdf4', 
+              border: '1px solid #bbf7d0', 
+              borderLeft: '4px solid #22c55e',
+              padding: '20px', 
+              borderRadius: '12px', 
+              marginBottom: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
+                <div style={{ 
+                  backgroundColor: '#dcfce7', 
+                  padding: '12px', 
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FaPhoneAlt style={{ color: '#16a34a', fontSize: '20px' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '600', color: '#1e293b', marginBottom: '6px', fontSize: '15px' }}>
+                    Phone
+                  </div>
+                  <a 
+                    href="tel:+919876543210"
+                    style={{ 
+                      fontSize: '16px', 
+                      color: '#16a34a', 
+                      textDecoration: 'none',
+                      fontWeight: '600'
+                    }}
+                  >
+                    +91 98765 43210
+                  </a>
+                </div>
+              </div>
             </div>
 
-            <div className="info-item">
-              <FaEnvelope />
-              <span>contact@kalakruthi.com</span>
-            </div>
+            {/* Email */}
+            <div style={{ 
+              backgroundColor: '#fefce8', 
+              border: '1px solid #fde68a', 
+              borderLeft: '4px solid #eab308',
+              padding: '20px', 
+              borderRadius: '12px', 
+              marginBottom: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
+                <div style={{ 
+                  backgroundColor: '#fef9c3', 
+                  padding: '12px', 
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FaEnvelope style={{ color: '#ca8a04', fontSize: '20px' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '600', color: '#1e293b', marginBottom: '6px', fontSize: '15px' }}>
+                    Email
+                  </div>
+                  <a 
+                    href="mailto:nextgenevofficial@gmail.com" 
+                    style={{ 
+                      fontSize: '14px', 
+                      color: '#ca8a04', 
+                      textDecoration: 'none',
+                      fontWeight: '600',
+                      wordBreak: 'break-all'
+                    }}
+                  >
+                    contact@kalakruthi.com
 
-            <div className="info-item">
-              <FaMapMarkerAlt />
-              <span>
-                Kalakruthi Wedding Photography
-                <br />
-                Guntur, Andhra Pradesh
-              </span>
+                  </a>
+                </div>
+              </div>
+            </div>
+             {/* Location */}
+            <div style={{ 
+              backgroundColor: '#f0f9ff', 
+              border: '1px solid #bae6fd', 
+              borderLeft: '4px solid #0ea5e9',
+              padding: '20px', 
+              borderRadius: '12px', 
+              marginBottom: '16px',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
+                <div style={{ 
+                  backgroundColor: '#e0f2fe', 
+                  padding: '12px', 
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <FaMapMarkerAlt style={{ color: '#0284c7', fontSize: '20px' }} />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '600', color: '#1e293b', marginBottom: '6px', fontSize: '15px' }}>
+                    Location
+                  </div>
+                  <div style={{ fontSize: '14px', color: '#475569', lineHeight: '1.6' }}>
+                   Kalakruthi Wedding Photography
+                  Guntur, Andhra Pradesh, India
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-
+          
         </div>
+        
       </section>
-
-      <a className="whatsapp-btn" href="https://wa.me/919876543210">
-        <FaWhatsapp />
-      </a>
     </>
   );
 }
-

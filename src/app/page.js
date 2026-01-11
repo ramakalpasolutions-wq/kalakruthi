@@ -56,6 +56,44 @@ export default function Page() {
 
   return (
     <>
+    <style>{`
+        /* YOUR EXISTING STYLES HERE */
+
+        /* ✅ ADD THIS BELOW YOUR EXISTING STYLES */
+        
+        /* Hero background responsive styles */
+        @media (min-width: 1025px) {
+          .hero {
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+          }
+        }
+
+        @media (min-width: 641px) and (max-width: 1024px) {
+          .hero {
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+          }
+        }
+
+        @media (min-width: 481px) and (max-width: 640px) {
+          .hero {
+            background-size: contain;
+            background-position: center;
+            background-repeat: no-repeat;
+          }
+        }
+
+        @media (max-width: 480px) {
+          .hero {
+            background-size: contain;
+            background-position: center;
+            background-repeat: repeat;
+          }
+        }
+      `}</style>
       {/* ================= HERO ================= */}
        <section
         className="hero"
@@ -63,18 +101,7 @@ export default function Page() {
       >
         <div className="hero-overlay"></div>
 
-        {/* <div className="social-icons">
-          <a href="#" className="icon facebook">
-            <i className="fab fa-facebook-f"></i>
-          </a>
-          <a href="#" className="icon instagram">
-            <i className="fab fa-instagram"></i>
-          </a>
-          <a href="#" className="icon youtube">
-            <i className="fab fa-youtube"></i>
-          </a>
-        </div> */}
-
+      
         <div className="hero-content">
           <h1 className="hero-float">{heroTitle}</h1>
           <p className="hero-float delay">{heroSubtitle}</p>
@@ -108,7 +135,7 @@ function Service({ img, title, link, stagger }) {
     <div className={`service-card ${stagger ? "stagger-down" : ""}`}>
       <div className="image-box">
         <img src={img} alt={title} />
-        <Link href={link} className="image-overlay">
+        <Link href="/services" className="image-overlay">
           <span>View</span>
         </Link>
       </div>

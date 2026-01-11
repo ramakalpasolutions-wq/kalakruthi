@@ -1,79 +1,84 @@
-import { NextResponse } from 'next/server';
-import clientPromise from '@/lib/mongodb';
-import { ObjectId } from 'mongodb';
-import { v2 as cloudinary } from 'cloudinary';
+import { NextResponse } from 'next/server'
+import clientPromise from '@/lib/mongodb'  // ✅ Use clientPromise
+import { ObjectId } from 'mongodb'
+import { v2 as cloudinary } from 'cloudinary'
 
-// Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
   secure: true,
-});
+})
 
-// POST - Upload image to service
 export async function POST(request, { params }) {
   try {
-    const { serviceId } = await params;
-    console.log('📤 Uploading image for service:', serviceId);
+    const { serviceId } = await params
+    const formData = await request.formData()
+    
+    const image = formData.get('image')
+    const category = formData.get('category') || 'photography'
 
-    const formData = await request.formData();
-    const file = formData.get('image');
+    console.log('📤 Uploading:', { serviceId, category, hasFile: !!image })
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    if (!serviceId || !category) {
+      return NextResponse.json(
+        { error: 'Service ID and category are required' }, 
+        { status: 400 }
+      )
     }
 
-    // Convert file to base64
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    const base64 = buffer.toString('base64');
-    const dataURI = `data:${file.type};base64,${base64}`;
+    if (!image) {
+      return NextResponse.json(
+        { error: 'No file provided' }, 
+        { status: 400 }
+      )
+    }
 
-    // Upload to Cloudinary
-    console.log('☁️ Uploading to Cloudinary...');
-    const uploadResponse = await cloudinary.uploader.upload(dataURI, {
-      folder: `kalakruthi-services/${serviceId}`,
-      resource_type: 'image',
-    });
+    // ✅ CRITICAL FIX: Connect to database
+    const client = await clientPromise
+    const db = client.db('kalakruthi')  // ✅ Use your database name
 
-    console.log('✅ Cloudinary upload successful:', uploadResponse.public_id);
+    const bytes = await image.arrayBuffer()
+    const buffer = Buffer.from(bytes)
+    const base64 = buffer.toString('base64')
+    const dataURI = `data:${image.type};base64,${base64}`
 
-    // Create image document
-    const imageDoc = {
-      _id: uploadResponse.public_id,
-      publicId: uploadResponse.public_id,
-      url: uploadResponse.url,
-      secureUrl: uploadResponse.secure_url,
-      format: uploadResponse.format,
-      width: uploadResponse.width,
-      height: uploadResponse.height,
-      createdAt: new Date(),
-    };
+    const resourceType = image.type.startsWith('video/') ? 'video' : 'image'
+    
+    const uploadResult = await cloudinary.uploader.upload(dataURI, {
+      folder: `services/${category}`,
+      resource_type: resourceType,
+    })
 
-    // Add image to service in MongoDB
-    const client = await clientPromise;
-    const db = client.db('kalakruthi');
+    const newImage = {
+      url: uploadResult.secure_url,
+      publicId: uploadResult.public_id,
+      type: resourceType,
+      addedAt: new Date()
+    }
 
+    // Update service with category type
     const result = await db.collection('services').updateOne(
       { _id: new ObjectId(serviceId) },
-      { $push: { images: imageDoc } }
-    );
+      { 
+        $push: { images: newImage },
+        $set: { 
+          type: category,
+          updatedAt: new Date() 
+        }
+      }
+    )
 
-    if (result.modifiedCount === 0) {
-      // If service doesn't exist, delete the uploaded image from Cloudinary
-      await cloudinary.uploader.destroy(uploadResponse.public_id);
-      return NextResponse.json({ error: 'Service not found' }, { status: 404 });
+    if (result.matchedCount === 0) {
+      return NextResponse.json({ error: 'Service not found' }, { status: 404 })
     }
 
-    console.log('✅ Image added to service');
-
-    return NextResponse.json({
-      success: true,
-      image: imageDoc
-    });
+    return NextResponse.json({ 
+      success: true, 
+      message: 'File uploaded successfully'
+    })
   } catch (error) {
-    console.error('❌ Upload Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('❌ Upload Error:', error)
+    return NextResponse.json({ error: error.message }, { status: 500 })
   }
 }

@@ -14,7 +14,7 @@ import Gallery from './components/Gallery'
 import HeroSection from './components/HeroSection'
 import Services from './components/Services'
 import CustomerDetails from './components/CustomerDetails'
-
+import B2BImages from './components/B2BImages'
 
 export default function AdminDashboard() {
   const [active, setActive] = useState("Dashboard")
@@ -25,6 +25,7 @@ export default function AdminDashboard() {
   const [newEventName, setNewEventName] = useState('')
   const [homeServices, setHomeServices] = useState([])
   const [activeTab, setActiveTab] = useState('photography')
+  const [b2bImages, setB2bImages] = useState([])
 
   // Hero Section State
   const [heroImages, setHeroImages] = useState([])
@@ -35,7 +36,6 @@ export default function AdminDashboard() {
   })
   const [selectedHeroImage, setSelectedHeroImage] = useState(null)
   const [heroPreviewUrl, setHeroPreviewUrl] = useState('')
-
 
   // Customer State
   const [formData, setFormData] = useState({
@@ -48,7 +48,6 @@ export default function AdminDashboard() {
     hardDisk: "Hard Disk",
     hardDiskAmount: 5000,
   })
-
 
   const [toast, setToast] = useState({ show: false, message: "", type: "success" })
   const [customerFilter, setCustomerFilter] = useState("All")
@@ -76,12 +75,22 @@ export default function AdminDashboard() {
   })
   const [activeRequirementTab, setActiveRequirementTab] = useState("")
 
-
   const showToast = (message, type = "success") => {
     setToast({ show: true, message, type })
     setTimeout(() => setToast({ show: false, message: "", type: "success" }), 3000)
   }
 
+  // ✅ ADD fetchServices function
+  const fetchServices = async () => {
+    try {
+      const response = await fetch('/api/services')
+      const data = await response.json()
+      setServices(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching services:', error)
+      setServices([])
+    }
+  }
 
   // Hero Section Functions
   const fetchHeroImages = async () => {
@@ -93,7 +102,6 @@ export default function AdminDashboard() {
       console.error('Error fetching hero images:', error)
     }
   }
-
 
   const handleHeroImageSelect = (e) => {
     const file = e.target.files[0]
@@ -108,7 +116,6 @@ export default function AdminDashboard() {
       setHeroPreviewUrl(URL.createObjectURL(file))
     }
   }
-
 
   const handleUploadHeroImage = async (e) => {
     e.preventDefault()
@@ -144,7 +151,6 @@ export default function AdminDashboard() {
     }
   }
 
-
   const handleDeleteHeroImage = async (id) => {
     if (!confirm('Are you sure you want to delete this hero image?')) return
     try {
@@ -163,7 +169,6 @@ export default function AdminDashboard() {
       showToast('Error deleting hero image', 'error')
     }
   }
-
 
   const toggleHeroActive = async (hero) => {
     try {
@@ -186,6 +191,77 @@ export default function AdminDashboard() {
     }
   }
 
+  // B2B Functions
+  const fetchB2bImages = async () => {
+    try {
+      const res = await fetch('/api/b2b-images')
+      const data = await res.json()
+      setB2bImages(Array.isArray(data) ? data : [])
+    } catch (error) {
+      console.error('Error fetching B2B images:', error)
+      showToast('Error loading B2B images', 'error')
+    }
+  }
+
+  const handleB2bUpload = async (e) => {
+    const files = Array.from(e.target.files)
+    if (files.length === 0) return
+
+    setLoading(true)
+    const formDataUpload = new FormData()
+    files.forEach((file) => formDataUpload.append("images", file))
+
+    try {
+      const response = await fetch("/api/b2b-images", {
+        method: "POST",
+        body: formDataUpload,
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Upload failed")
+      }
+
+      showToast(data.message || "B2B images uploaded successfully!", "success")
+      e.target.value = ""
+      await fetchB2bImages()
+    } catch (error) {
+      console.error("B2B upload error:", error)
+      showToast(`Upload failed: ${error.message}`, "error")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const deleteB2bImage = async (publicId) => {
+    if (!publicId || !confirm("Delete this B2B image?")) {
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await fetch("/api/b2b-images", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ publicId }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Delete failed")
+      }
+
+      showToast("B2B image deleted successfully!", "success")
+      await fetchB2bImages()
+    } catch (error) {
+      console.error("Delete B2B error:", error)
+      showToast(`Delete failed: ${error.message}`, "error")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Customer Functions
   const handleTotalAmountChange = (value) => {
@@ -202,7 +278,6 @@ export default function AdminDashboard() {
       status: dueAmount <= 0 ? "Paid" : "Pending",
     })
   }
-
 
   const handleAdvanceCountChange = (count) => {
     setSelectedAdvanceCount(count)
@@ -237,7 +312,8 @@ export default function AdminDashboard() {
       status: dueAmount <= 0 ? "Paid" : "Pending",
     })
   }
-const updateAdvance = (index, field, value) => {
+
+  const updateAdvance = (index, field, value) => {
     const newAdvances = [...formData.advances]
     newAdvances[index] = {
       ...newAdvances[index],
@@ -257,65 +333,80 @@ const updateAdvance = (index, field, value) => {
     })
   }
 
-
   const apiRequest = useCallback(async (url, options = {}) => {
-    setLoading(true)
     try {
       const headers = { ...options.headers }
       if (!options.body || !(options.body instanceof FormData)) {
         headers["Content-Type"] = "application/json"
       }
-      const res = await fetch(`/api/${url}`, { ...options, headers })
-      if (!res.ok) throw new Error(await res.text())
-      return await res.json()
+      
+      const res = await fetch(`/api/${url}`, { 
+        ...options, 
+        headers,
+        cache: 'no-store'
+      })
+      
+      if (!res.ok) {
+        const errorText = await res.text().catch(() => 'Unknown error')
+        console.error(`API Error [${res.status}]: /api/${url} - ${errorText}`)
+        throw new Error(errorText || `HTTP ${res.status}`)
+      }
+      
+      const data = await res.json().catch(() => null)
+      return data || []
+    } catch (error) {
+      console.error(`Failed to fetch /api/${url}:`, error.message)
+      return []
     } finally {
       setLoading(false)
     }
   }, [])
 
-
   const refreshData = useCallback(async () => {
-    try {
-      const [customersRes, galleryRes, servicesRes, homeServicesRes] = await Promise.all([
-        apiRequest("customers"),
-        apiRequest("gallery"),
-        apiRequest("services"),
-        apiRequest("home-services"),
-      ])
+    const results = await Promise.allSettled([
+      apiRequest("customers"),
+      apiRequest("gallery"), 
+      apiRequest("services"),
+      apiRequest("home-services"),
+      apiRequest("b2b-images")
+    ])
 
-      const normalizedCustomers = customersRes.map((c) => {
-        const total = parseInt(c.totalAmount) || 0
-        const advances = c.advances || []
-        const paidFromAdvances = advances.reduce(
-          (sum, adv) => sum + (Number(adv.amount) || 0),
-          0
-        )
-        const due = total - paidFromAdvances
+    const customersData = results[0].status === 'fulfilled' && Array.isArray(results[0].value) 
+      ? results[0].value : []
+    
+    const galleryData = results[1].status === 'fulfilled' ? results[1].value : { media: [] }
+    const servicesData = results[2].status === 'fulfilled' && Array.isArray(results[2].value) 
+      ? results[2].value : []
+    const homeServicesData = results[3].status === 'fulfilled' && Array.isArray(results[3].value) 
+      ? results[3].value : []
+    const b2bData = results[4].status === 'fulfilled' && Array.isArray(results[4].value) 
+      ? results[4].value : []
 
-        return {
-          ...c,
-          totalAmount: total,
-          advances,
-          dueAmount: due,
-          status: due <= 0 ? "Paid" : "Pending",
-        }
-      })
+    const normalizedCustomers = customersData.map((c) => {
+      const total = parseInt(c?.totalAmount) || 0
+      const advances = Array.isArray(c?.advances) ? c.advances : []
+      const paidFromAdvances = advances.reduce((sum, adv) => sum + (Number(adv?.amount) || 0), 0)
+      const due = total - paidFromAdvances
+      return { 
+        ...c, 
+        totalAmount: total, 
+        advances, 
+        dueAmount: due, 
+        status: due <= 0 ? "Paid" : "Pending" 
+      }
+    })
 
-      setCustomers(normalizedCustomers)
-      setGalleryMedia(galleryRes?.media || [])
-      setServices(servicesRes)
-      setHomeServices(homeServicesRes)
-    } catch (error) {
-      console.error("Error loading data:", error)
-    }
+    setCustomers(normalizedCustomers)
+    setGalleryMedia(Array.isArray(galleryData.media) ? galleryData.media : [])
+    setServices(servicesData)
+    setHomeServices(homeServicesData)
+    setB2bImages(b2bData)
   }, [apiRequest])
-
 
   useEffect(() => {
     refreshData()
     fetchHeroImages()
   }, [refreshData])
-
 
   const handleSaveCustomer = async () => {
     if (!formData.name || !formData.totalAmount) {
@@ -341,8 +432,6 @@ const updateAdvance = (index, field, value) => {
         customerData._id = editingId
       }
 
-      console.log('Saving customer data:', customerData)
-
       const response = await fetch("/api/customers", {
         method: editingId ? "PUT" : "POST",
         headers: { "Content-Type": "application/json" },
@@ -350,7 +439,6 @@ const updateAdvance = (index, field, value) => {
       })
 
       const result = await response.json()
-      console.log('Save result:', result)
       
       if (!response.ok) {
         throw new Error(result.error || "Failed to save customer")
@@ -381,7 +469,6 @@ const updateAdvance = (index, field, value) => {
       setLoading(false)
     }
   }
-
 
   const handleSendEmail = async (customerData) => {
     try {
@@ -443,7 +530,6 @@ const updateAdvance = (index, field, value) => {
     }
   }
 
-
   const handleEditCustomer = (customer) => {
     const advCount = (customer.advances || []).length
     setEditingId(customer._id || customer.id)
@@ -463,7 +549,6 @@ const updateAdvance = (index, field, value) => {
     
     setOpenPaymentRowId(null)
   }
-
 
   const handleDeleteCustomer = async (id) => {
     if (!confirm("Delete customer?")) return
@@ -492,7 +577,6 @@ const updateAdvance = (index, field, value) => {
     }
   }
 
-
   const handleDeleteAllCustomers = async () => {
     if (!confirm("Are you sure you want to delete ALL customers? This action cannot be undone!")) return
     
@@ -516,7 +600,6 @@ const updateAdvance = (index, field, value) => {
       setLoading(false)
     }
   }
-
 
   const handleGalleryUpload = async (e) => {
     const files = Array.from(e.target.files)
@@ -549,7 +632,6 @@ const updateAdvance = (index, field, value) => {
     }
   }
 
-
   const deleteGalleryMedia = async (publicId) => {
     if (!publicId || !confirm("Delete this media from Cloudinary?")) {
       return
@@ -578,7 +660,6 @@ const updateAdvance = (index, field, value) => {
       setLoading(false)
     }
   }
-
 
   const addService = async () => {
     if (!serviceInput.trim()) return
@@ -615,36 +696,39 @@ const updateAdvance = (index, field, value) => {
     }
   }
 
-
-  const deleteService = async (serviceId) => {
-    if (
-      !confirm("Are you sure you want to delete this service? This will also delete all images!")
-    )
-      return
-
-    try {
-      setLoading(true)
-      const response = await fetch("/api/services", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: serviceId }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to delete service")
-      }
-
-      showToast("Service deleted successfully!", "success")
-      await refreshData()
-    } catch (error) {
-      console.error("Delete service error:", error)
-      showToast(`Failed to delete: ${error.message}`, "error")
-    } finally {
-      setLoading(false)
-    }
+ const deleteService = async (serviceId) => {
+  if (!serviceId) {
+    showToast("Service ID required", "error");
+    return;
   }
+
+  if (!confirm("Are you sure you want to delete this service? This will also delete all images!")) {
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    // ✅ SEND ID IN QUERY PARAM (matches route.js)
+    const response = await fetch(`/api/services?id=${serviceId}`, {
+      method: "DELETE",
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to delete service");
+    }
+
+    showToast("Service deleted successfully!", "success");
+    await refreshData();
+  } catch (error) {
+    console.error("Delete service error:", error);
+    showToast(`Failed to delete: ${error.message}`, "error");
+  } finally {
+    setLoading(false);
+  }
+};
 
 
   const deleteServiceImage = async (serviceId, imageId) => {
@@ -693,54 +777,89 @@ const updateAdvance = (index, field, value) => {
     }
   }
 
-
-  const handleDirectUpload = async (serviceId, event) => {
-    const files = Array.from(event.target.files)
-    
-    if (files.length === 0) return
-
-    const oversizedFiles = files.filter(
-      (file) => file.size / 1024 / 1024 > 15
-    )
-
-    if (oversizedFiles.length > 0) {
-      showToast(
-        `${oversizedFiles.length} file(s) exceed 15MB limit. Please compress them.`,
-        "error"
-      )
-      event.target.value = ""
-      return
-    }
-
+  // ✅ VIDEO URL UPLOAD HANDLER
+ // AFTER (✅ CORRECT):
+const handleVideoUrlUpload = async (serviceId, videoUrl, category) => {
+  try {
     setLoading(true)
+    
+    console.log('📹 Uploading video URL:', { serviceId, videoUrl, category })  // ✅ Debug
+    
+    const response = await fetch('/api/services/video-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        serviceId: serviceId,
+        url: videoUrl,
+        category: category || 'videography'  // ✅ Ensure category is sent
+      }),
+    })
 
-    try {
-      for (const file of files) {
-        const formDataImg = new FormData()
-        formDataImg.append("image", file)
+    const result = await response.json()
 
-        const response = await fetch(`/api/services/${serviceId}/upload`, {
-          method: "POST",
-          body: formDataImg,
-        })
-
-        const result = await response.json()
-
-        if (!response.ok) {
-          throw new Error(result.error || "Failed to upload image")
-        }
-      }
-
-      showToast(`${files.length} image(s) uploaded successfully!`, "success")
-      await refreshData()
-    } catch (error) {
-      console.error("Upload error:", error)
-      showToast(`Upload failed: ${error.message}`, "error")
-    } finally {
-      setLoading(false)
-      event.target.value = ""
+    if (!response.ok) {
+      throw new Error(result.error || 'Failed to add video URL')
     }
+
+    showToast('Video URL added successfully!', 'success')
+    await refreshData()  // ✅ Refresh to get updated services
+  } catch (error) {
+    console.error('Error adding video URL:', error)
+    showToast('Error adding video URL: ' + error.message, 'error')
+  } finally {
+    setLoading(false)
   }
+}
+
+
+ const handleDirectUpload = async (serviceId, event, category = 'photography') => {
+  const files = Array.from(event.target.files)
+  
+  if (files.length === 0) return
+
+  const oversizedFiles = files.filter(
+    (file) => file.size / 1024 / 1024 > 15
+  )
+
+  if (oversizedFiles.length > 0) {
+    showToast(
+      `${oversizedFiles.length} file(s) exceed 15MB limit. Please compress them.`,
+      "error"
+    )
+    event.target.value = ""
+    return
+  }
+
+  setLoading(true)
+
+  try {
+    for (const file of files) {
+      const formDataImg = new FormData()
+      formDataImg.append("image", file)
+      formDataImg.append("category", category)  // ✅ ADD THIS
+
+      const response = await fetch(`/api/services/${serviceId}/upload`, {
+        method: "POST",
+        body: formDataImg,
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to upload image")
+      }
+    }
+
+    showToast(`${files.length} file(s) uploaded successfully!`, "success")
+    await refreshData()
+  } catch (error) {
+    console.error("Upload error:", error)
+    showToast(`Upload failed: ${error.message}`, "error")
+  } finally {
+    setLoading(false)
+    event.target.value = ""
+  }
+}
 
 
   return (
@@ -820,6 +939,7 @@ const updateAdvance = (index, field, value) => {
             addService={addService}
             deleteService={deleteService}
             handleDirectUpload={handleDirectUpload}
+            handleVideoUrlUpload={handleVideoUrlUpload}  /* ✅ PROPERLY PASSED */
             deleteServiceImage={deleteServiceImage}
             loading={loading}
             activeTab={activeTab}
@@ -833,6 +953,15 @@ const updateAdvance = (index, field, value) => {
             setHomeServices={setHomeServices}
             loading={loading}
             setLoading={setLoading}
+            showToast={showToast}
+            refreshData={refreshData}
+          />
+        )}
+
+        {active === "B2B Images" && (
+          <B2BImages
+            b2bImages={b2bImages}
+            loading={loading}
             showToast={showToast}
             refreshData={refreshData}
           />

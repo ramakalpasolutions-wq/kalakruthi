@@ -230,19 +230,24 @@ export default function ServicesPage() {
   }, []);
 
   useEffect(() => {
-    fetch("/api/services")
-      .then((res) => res.json())
-      .then((data) => {
-        console.log("✅ Fetched services:", data);
-        setDbServices(Array.isArray(data) ? data : []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("❌ Error fetching services:", err);
-        setDbServices([]);
-        setLoading(false);
-      });
-  }, []);
+  fetch("/api/services?type=photography")  // ✅ ADD ?type=photography
+    .then((res) => res.json())
+    .then((data) => {
+      console.log("✅ Fetched photography services:", data);
+      // ✅ Filter ONLY photography (backup filter)
+      const photoServices = Array.isArray(data) 
+        ? data.filter(s => s.type === 'photography')
+        : [];
+      setDbServices(photoServices);
+      setLoading(false);
+    })
+    .catch((err) => {
+      console.error("❌ Error fetching services:", err);
+      setDbServices([]);
+      setLoading(false);
+    });
+}, []);
+
 
   const handleButtonClick = useCallback((service) => {
     setActivePopup(service);
@@ -287,7 +292,7 @@ export default function ServicesPage() {
         .services-page {
           min-height: 100vh;
           background: linear-gradient(135deg, #e0f7fa 0%, #f3e5f5 100%);
-          padding: 40px 16px 60px;
+          padding: 0px 16px 60px;
           display: flex;
           justify-content: center;
         }
@@ -301,7 +306,7 @@ export default function ServicesPage() {
         .services-title {
           font-size: 3rem;
           text-align: center;
-          margin: 0 0 24px;
+          margin: 0 24px ;
           font-weight: 900;
           background: linear-gradient(90deg, #ff0000 0%, #ff7f00 14%, #ffff00 28%, #00ff00 42%, #0000ff 57%, #4b0082 71%, #9400d3 85%, #ff0000 100%);
           background-size: 200% auto;

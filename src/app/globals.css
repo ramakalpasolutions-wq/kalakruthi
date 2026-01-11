@@ -339,11 +339,11 @@ body {
 
 /* ================= LAYOUT ================= */
 .footer-container {
-  max-width: 1200px;
+  max-width: 1350px;
   margin: auto;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 40px;
+  grid-template-columns: repeat(4, 1fr);  /* ✅ CHANGED: 3 → 4 columns */
+  gap: 100px;
 }
 
 /* ================= BRAND ================= */
@@ -401,6 +401,69 @@ body {
   color: #ffd54f;
 }
 
+/* ================= SOCIAL TEXT LIST ================= */
+.social-text-list {
+  list-style: none;
+  padding: 0;
+}
+
+.social-text-list li {
+  margin-bottom: 12px;
+}
+
+.social-text-list li a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-size: 15px;
+  transition: all 0.3s ease;
+}
+
+.social-text-list li a:hover {
+  color: #ffd54f;
+  padding-left: 4px;
+}
+
+.social-text-list li a i {
+  font-size: 18px;
+  color: #ffd54f;
+  width: 20px;
+}
+
+/* ================= CONTACT DETAILS - NEW ================= */
+.contact-details-list {
+  list-style: none;
+  padding: 0;
+}
+
+.contact-details-list .info-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 15px;
+}
+
+.contact-details-list .info-item svg {
+  color: #ffd54f;
+  margin-top: 2px;
+  flex-shrink: 0;
+  width: 20px;
+}
+
+.contact-details-list .info-item a {
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.contact-details-list .info-item a:hover {
+  color: #ffd54f;
+}
+
 /* ================= SOCIAL ICONS (UPDATED) ================= */
 .social-icons {
   display: flex;
@@ -411,17 +474,13 @@ body {
   width: 44px;
   height: 44px;
   border-radius: 12px;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   color: #ffffff;
   font-size: 18px;
   text-decoration: none;
-
   background: rgba(255, 255, 255, 0.08);
-
   transition:
     transform 0.3s ease,
     background 0.3s ease,
@@ -448,9 +507,33 @@ body {
 }
 
 /* ================= RESPONSIVE ================= */
-@media (max-width: 900px) {
+/* ✅ DESKTOP: 4 columns (1200px+) */
+@media (min-width: 1200px) {
+  .footer-container {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 40px;
+  }
+}
+
+/* ✅ TABLET: 2 columns (900px - 1199px) */
+@media (max-width: 1199px) and (min-width: 700px) {
+  .footer-container {
+    grid-template-columns: repeat(2, 1fr);  /* 2x2 grid */
+    gap: 30px;
+  }
+}
+
+/* ✅ MOBILE: 1 column (900px-) */
+@media (max-width: 700px) {
   .footer-container {
     grid-template-columns: 1fr;
+    text-align: center;
+    gap: 30px;
+  }
+
+  .social-text-list li a,
+  .contact-details-list .info-item {
+    justify-content: center;
     text-align: center;
   }
 
@@ -458,6 +541,7 @@ body {
     justify-content: center;
   }
 }
+
 
 /* ================= HERO ================= */
 .hero {
@@ -498,43 +582,55 @@ body {
 }
 
 /* ================= FLOAT ANIMATION ================= */
-@keyframes floatText {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-8px); }
+/* ================= HERO - FORCE ANIMATION ================= */
+/* ================= WAVE FLOATING MOTION ================= */
+@keyframes waveFloat {
+  0%, 100% {
+    transform: translateY(0px) translateX(0px);
+  }
+  14% {
+    transform: translateY(-8px) translateX(2px);
+  }
+  28% {
+    transform: translateY(-18px) translateX(-3px);
+  }
+  42% {
+    transform: translateY(-10px) translateX(1px);
+  }
+  57% {
+    transform: translateY(-24px) translateX(-2px);
+  }
+  71% {
+    transform: translateY(-14px) translateX(3px);
+  }
+  85% {
+    transform: translateY(-28px) translateX(-1px);
+  }
+  100% {
+    transform: translateY(0px) translateX(0px);
+  }
 }
 
-/* ================= SOCIAL ICONS ================= */
-.social-icons {
-  position: absolute;
-  right:40px;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  z-index: 10;
+/* ================= WAVE FLOATING - SYNCHRONIZED ================= */
+.hero-float,
+.hero-float.delay {
+  font-family: "Playfair Display", serif;
+  animation: waveFloat 8s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
-.social-icons .icon {
-  width: 55px;
-  height: 55px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid #fff;
-  color: #fff;
-  font-size: 22px;
-  transition: all 0.3s ease;
-  text-decoration: none;
+/* Title: Large */
+.hero-float {
+  font-size: 70px;
 }
 
-/* Bigger YouTube Icon */
-.social-icons .icon.youtube {
-  width: 70px;
-  height: 70px;
-  font-size: 30px;
+/* Subtitle: Small + spacing */
+.hero-float.delay {
+  font-size: 25px;
+  margin-top: 8px;
 }
+
 
 /* Hover Effect */
 .social-icons .icon:hover {
@@ -1042,6 +1138,7 @@ body {
 /* ================= CARD ================= */
 .contact-card {
   width: 100%;
+  height: auto;
   max-width: 900px;
   background: var(--card-bg);
   padding: 48px;

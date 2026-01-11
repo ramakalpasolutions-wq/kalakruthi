@@ -8,12 +8,15 @@ export default function Services({
   addService,
   deleteService,
   handleDirectUpload,
+  handleVideoUrlUpload,
   deleteServiceImage,
   loading,
   activeTab,
   setActiveTab
 }) {
   const [fullPageService, setFullPageService] = useState(null)
+  const [videoUrls, setVideoUrls] = useState({})
+  const [uploadMethod, setUploadMethod] = useState({})
 
   const openFullPageView = (service) => {
     setFullPageService(service)
@@ -25,10 +28,39 @@ export default function Services({
     document.body.style.overflow = 'auto'
   }
 
-  // Filter services based on active tab
+  const handleVideoUrlChange = (serviceId, value) => {
+    setVideoUrls(prev => ({
+      ...prev,
+      [serviceId]: value
+    }))
+  }
+
+  const submitVideoUrl = (serviceId) => {
+    const url = videoUrls[serviceId]?.trim()
+    if (url && handleVideoUrlUpload) {
+      handleVideoUrlUpload(serviceId, url, activeTab)
+      setVideoUrls(prev => ({
+        ...prev,
+        [serviceId]: ''
+      }))
+    }
+  }
+
+  const toggleUploadMethod = (serviceId, method) => {
+    setUploadMethod(prev => ({
+      ...prev,
+      [serviceId]: method
+    }))
+  }
+
+  // Filter services based on active tab with correct type checking
   const filteredServices = services.filter(service => {
-    if (activeTab === 'photography') return service.type === 'photography' || !service.type
-    if (activeTab === 'videography') return service.type === 'videography'
+    if (activeTab === 'photography') {
+      return service.type === 'photography' || !service.type || service.type === ''
+    }
+    if (activeTab === 'videography') {
+      return service.type === 'videography'
+    }
     return true
   })
 
@@ -48,7 +80,7 @@ export default function Services({
         <div style={{ display: "flex", gap: "12px" }}>
           <input
             type="text"
-            placeholder="Service name (e.g., Wedding Photography)"
+            placeholder={`Service name (e.g., ${activeTab === 'videography' ? 'Wedding Films' : 'Wedding Photography'})`}
             value={serviceInput}
             onChange={(e) => setServiceInput(e.target.value)}
             onKeyPress={(e) => e.key === "Enter" && addService()}
@@ -141,12 +173,14 @@ export default function Services({
         ) : (
           <div style={{ 
             display: "grid", 
-            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", 
+            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", 
             gap: "20px" 
           }}>
             {filteredServices.map((service) => {
               const serviceId = service._id || service.id
               const imageCount = service.images?.length || 0
+              const isVideography = activeTab === 'videography'
+              const currentMethod = uploadMethod[serviceId] || 'url'
 
               return (
                 <div
@@ -180,77 +214,256 @@ export default function Services({
                       color: "#6b7280",
                       fontWeight: "600" 
                     }}>
-                      {imageCount} {imageCount === 1 ? 'Image' : 'Images'}
+                      {imageCount} {isVideography ? (imageCount === 1 ? 'Video' : 'Videos') : (imageCount === 1 ? 'Image' : 'Images')}
                     </p>
                   </div>
 
                   {/* Action Buttons */}
-                  <div style={{ display: "flex", flexDirection: "row", gap: "8px" }}>
-                    <label style={{
-                      padding: "10px 16px",
-                      background: "#3b82f6",
-                      color: "white",
-                      borderRadius: "8px",
-                      cursor: "pointer",
-                      fontWeight: "600",
-                      fontSize: "13px",
-                      textAlign: "center",
-                      transition: "background 0.2s",
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = "#2563eb"}
-                    onMouseLeave={(e) => e.currentTarget.style.background = "#3b82f6"}
-                    >
-                      📤 
-                      <input
-                        type="file"
-                        multiple
-                        accept="image/*"
-                        onChange={(e) => handleDirectUpload(serviceId, e)}
-                        style={{ display: "none" }}
-                      />
-                    </label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    {!isVideography ? (
+                      // PHOTOGRAPHY UPLOAD
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <label 
+                          title="Upload Images"
+                          style={{
+                            flex: 1,
+                            padding: "10px 16px",
+                            background: "#3b82f6",
+                            color: "white",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            fontWeight: "600",
+                            fontSize: "13px",
+                            textAlign: "center",
+                            transition: "background 0.2s",
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "#2563eb"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "#3b82f6"}
+                        >
+                          📤 Upload
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={(e) => handleDirectUpload(serviceId, e, 'photography')}
+                            style={{ display: "none" }}
+                          />
+                        </label>
 
-                    {imageCount > 0 && (
-                      <button
-                        onClick={() => openFullPageView(service)}
-                        style={{
-                          padding: "10px 16px",
-                          background: "#10b981",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "8px",
-                          fontWeight: "600",
-                          fontSize: "13px",
-                          cursor: "pointer",
-                          transition: "background 0.2s",
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "#059669"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = "#10b981"}
-                      >
-                        👁️  
-                      </button>
+                        {imageCount > 0 && (
+                          <button
+                            title="View Images"
+                            onClick={() => openFullPageView(service)}
+                            style={{
+                              padding: "10px 16px",
+                              background: "#10b981",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "8px",
+                              fontWeight: "600",
+                              fontSize: "13px",
+                              cursor: "pointer",
+                              transition: "background 0.2s",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#059669"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "#10b981"}
+                          >
+                            👁️ View
+                          </button>
+                        )}
+
+                        <button
+                          title="Delete Service"
+                          onClick={() => deleteService(serviceId)}
+                          disabled={loading}
+                          style={{
+                            padding: "10px 16px",
+                            background: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "8px",
+                            fontWeight: "600",
+                            fontSize: "13px",
+                            cursor: loading ? "not-allowed" : "pointer",
+                            opacity: loading ? 0.6 : 1,
+                            transition: "background 0.2s",
+                          }}
+                          onMouseEnter={(e) => !loading && (e.currentTarget.style.background = "#dc2626")}
+                          onMouseLeave={(e) => !loading && (e.currentTarget.style.background = "#ef4444")}
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ) : (
+                      // VIDEOGRAPHY - URL OR FILE UPLOAD
+                      <>
+                        {/* Toggle Method */}
+                        <div style={{ 
+                          display: "flex", 
+                          gap: "8px",
+                          padding: "4px",
+                          background: "#f3f4f6",
+                          borderRadius: "8px"
+                        }}>
+                          <button
+                            onClick={() => toggleUploadMethod(serviceId, 'url')}
+                            style={{
+                              flex: 1,
+                              padding: "8px",
+                              background: currentMethod === 'url' ? "#8b5cf6" : "transparent",
+                              color: currentMethod === 'url' ? "white" : "#6b7280",
+                              border: "none",
+                              borderRadius: "6px",
+                              fontWeight: "600",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                          >
+                            🔗 Paste URL
+                          </button>
+                          <button
+                            onClick={() => toggleUploadMethod(serviceId, 'file')}
+                            style={{
+                              flex: 1,
+                              padding: "8px",
+                              background: currentMethod === 'file' ? "#8b5cf6" : "transparent",
+                              color: currentMethod === 'file' ? "white" : "#6b7280",
+                              border: "none",
+                              borderRadius: "6px",
+                              fontWeight: "600",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                            }}
+                          >
+                            📤 Upload File
+                          </button>
+                        </div>
+
+                        {/* URL Input */}
+                        {currentMethod === 'url' && (
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <input
+                              type="text"
+                              placeholder="YouTube, Vimeo, or video URL"
+                              value={videoUrls[serviceId] || ''}
+                              onChange={(e) => handleVideoUrlChange(serviceId, e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === "Enter") {
+                                  submitVideoUrl(serviceId)
+                                }
+                              }}
+                              style={{
+                                flex: 1,
+                                padding: "10px 12px",
+                                border: "1px solid #d1d5db",
+                                borderRadius: "8px",
+                                fontSize: "13px",
+                              }}
+                            />
+                            <button
+                              title="Add Video URL"
+                              onClick={() => submitVideoUrl(serviceId)}
+                              disabled={loading || !videoUrls[serviceId]?.trim()}
+                              style={{
+                                padding: "10px 16px",
+                                background: "#8b5cf6",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "8px",
+                                fontWeight: "600",
+                                fontSize: "13px",
+                                cursor: loading || !videoUrls[serviceId]?.trim() ? "not-allowed" : "pointer",
+                                opacity: loading || !videoUrls[serviceId]?.trim() ? 0.6 : 1,
+                                transition: "background 0.2s",
+                                whiteSpace: "nowrap",
+                              }}
+                              onMouseEnter={(e) => !loading && videoUrls[serviceId]?.trim() && (e.currentTarget.style.background = "#7c3aed")}
+                              onMouseLeave={(e) => !loading && (e.currentTarget.style.background = "#8b5cf6")}
+                            >
+                              ➕ Add
+                            </button>
+                          </div>
+                        )}
+
+                        {/* File Upload */}
+                        {currentMethod === 'file' && (
+                          <label 
+                            title="Upload Video File"
+                            style={{
+                              padding: "10px 16px",
+                              background: "#8b5cf6",
+                              color: "white",
+                              borderRadius: "8px",
+                              cursor: "pointer",
+                              fontWeight: "600",
+                              fontSize: "13px",
+                              textAlign: "center",
+                              transition: "background 0.2s",
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#7c3aed"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "#8b5cf6"}
+                          >
+                            📤 Upload Video File
+                            <input
+                              type="file"
+                              accept="video/*"
+                              onChange={(e) => handleDirectUpload(serviceId, e, 'videography')}
+                              style={{ display: "none" }}
+                            />
+                          </label>
+                        )}
+
+                        {/* View & Delete Buttons */}
+                        <div style={{ display: "flex", gap: "8px" }}>
+                          {imageCount > 0 && (
+                            <button
+                              title="View Videos"
+                              onClick={() => openFullPageView(service)}
+                              style={{
+                                flex: 1,
+                                padding: "10px 16px",
+                                background: "#10b981",
+                                color: "white",
+                                border: "none",
+                                borderRadius: "8px",
+                                fontWeight: "600",
+                                fontSize: "13px",
+                                cursor: "pointer",
+                                transition: "background 0.2s",
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.background = "#059669"}
+                              onMouseLeave={(e) => e.currentTarget.style.background = "#10b981"}
+                            >
+                              👁️ View
+                            </button>
+                          )}
+
+                          <button
+                            title="Delete Service"
+                            onClick={() => deleteService(serviceId)}
+                            disabled={loading}
+                            style={{
+                              padding: "10px 16px",
+                              background: "#ef4444",
+                              color: "white",
+                              border: "none",
+                              borderRadius: "8px",
+                              fontWeight: "600",
+                              fontSize: "13px",
+                              cursor: loading ? "not-allowed" : "pointer",
+                              opacity: loading ? 0.6 : 1,
+                              transition: "background 0.2s",
+                            }}
+                            onMouseEnter={(e) => !loading && (e.currentTarget.style.background = "#dc2626")}
+                            onMouseLeave={(e) => !loading && (e.currentTarget.style.background = "#ef4444")}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </>
                     )}
-
-                    <button
-                      onClick={() => deleteService(serviceId)}
-                      disabled={loading}
-                      style={{
-                        padding: "10px 16px",
-                        background: "#ef4444",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "8px",
-                        fontWeight: "600",
-                        fontSize: "13px",
-                        cursor: loading ? "not-allowed" : "pointer",
-                        opacity: loading ? 0.6 : 1,
-                        transition: "background 0.2s",
-                      }}
-                      onMouseEnter={(e) => !loading && (e.currentTarget.style.background = "#dc2626")}
-                      onMouseLeave={(e) => !loading && (e.currentTarget.style.background = "#ef4444")}
-                    >
-                      🗑️ 
-                    </button>
                   </div>
                 </div>
               )
@@ -259,7 +472,7 @@ export default function Services({
         )}
       </div>
 
-      {/* Full-Page Image Viewer Modal */}
+      {/* Full-Page Viewer Modal */}
       {fullPageService && (
         <div
           style={{
@@ -307,10 +520,11 @@ export default function Services({
                   {fullPageService.name}
                 </h2>
                 <p style={{ fontSize: "14px", color: "#9ca3af" }}>
-                  {fullPageService.images?.length || 0} Images
+                  {fullPageService.images?.length || 0} {activeTab === 'videography' ? 'Videos' : 'Images'}
                 </p>
               </div>
               <button
+                title="Close"
                 onClick={closeFullPageView}
                 style={{
                   padding: "12px 24px",
@@ -330,7 +544,7 @@ export default function Services({
               </button>
             </div>
 
-            {/* Images Grid */}
+            {/* Images/Videos Grid */}
             {fullPageService.images && fullPageService.images.length > 0 ? (
               <div style={{
                 display: "grid",
@@ -362,6 +576,7 @@ export default function Services({
                       }}
                     />
                     <button
+                      title={activeTab === 'videography' ? "Delete Video" : "Delete Image"}
                       onClick={() => deleteServiceImage(fullPageService._id || fullPageService.id, img.publicId || img)}
                       disabled={loading}
                       style={{
@@ -382,7 +597,7 @@ export default function Services({
                       onMouseEnter={(e) => !loading && (e.currentTarget.style.opacity = "1")}
                       onMouseLeave={(e) => !loading && (e.currentTarget.style.opacity = "0.95")}
                     >
-                      🗑️ Delete
+                      🗑️
                     </button>
                     <div style={{
                       position: "absolute",
@@ -408,7 +623,7 @@ export default function Services({
                 borderRadius: "12px",
               }}>
                 <p style={{ fontSize: "16px", color: "#9ca3af" }}>
-                  No images available for this service.
+                  No {activeTab === 'videography' ? 'videos' : 'images'} available yet.
                 </p>
               </div>
             )}

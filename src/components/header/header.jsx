@@ -47,6 +47,16 @@ export default function Header() {
   return (
     <>
       <style jsx>{`
+        .header {
+          background: #008080 !important;
+          backdrop-filter: none !important;
+        }
+
+        .header.glass-active {
+          background: #008080 !important;
+          backdrop-filter: none !important;
+        }
+
         .dropdown-container {
           position: relative;
         }
@@ -56,93 +66,101 @@ export default function Header() {
           align-items: center;
           gap: 4px;
           cursor: pointer;
-          color: inherit;
+          color: #ffffff !important;
           text-decoration: none;
-          transition: color 0.2s ease;
+          transition: all 0.3s ease;
+          font-weight: 600;
         }
 
         .dropdown-trigger:hover {
-          color: #6366f1;
+          color: #ffd54f !important;
+          text-decoration: underline;
         }
 
         .dropdown-arrow {
           font-size: 12px;
-          transition: transform 0.3s ease;
+          color: #ffffff !important;
+          transition: all 0.3s ease;
         }
 
         .dropdown-arrow.open {
           transform: rotate(180deg);
+          color: #ffd54f !important;
         }
 
-       .dropdown-menu {  
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 50%;
-  transform: translateX(-50%) translateY(-10px);
-  background: #008080;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  min-width: 180px;
-  opacity: 0;
-  visibility: hidden;
-  transition: all 0.3s ease;
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-}
+        .dropdown-menu {  
+          position: absolute;
+          top: calc(100% + 8px);
+          left: 50%;
+          transform: translateX(-50%) translateY(-10px);
+          background: #008080;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          min-width: 180px;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.3s ease;
+          z-index: 9999;
+          display: flex;
+          flex-direction: column;
+        }
 
-.dropdown-menu.open {
-  opacity: 1;
-  visibility: visible;
-  transform: translateX(-50%) translateY(0);
-}
+        .dropdown-menu.open {
+          opacity: 1;
+          visibility: visible;
+          transform: translateX(-50%) translateY(0);
+        }
 
-.dropdown-menu a {
-  display: block;
-  padding: 12px 20px;
-  color: #ffffff !important;
-  text-decoration: none !important;
-  transition: all 0.2s ease;
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
+        .dropdown-menu a {
+          display: block;
+          padding: 12px 20px;
+          color: #ffffff !important;
+          text-decoration: none !important;
+          transition: all 0.2s ease;
+          font-size: 14px;
+          font-weight: 500;
+          white-space: nowrap;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
 
-.dropdown-menu a:last-child {
-  border-bottom: none;
-}
+        .dropdown-menu a:last-child {
+          border-bottom: none;
+        }
 
-.dropdown-menu a:first-child {
-  border-radius: 8px 8px 0 0;
-}
+        .dropdown-menu a:first-child {
+          border-radius: 8px 8px 0 0;
+        }
 
-.dropdown-menu a:last-child {
-  border-radius: 0 0 8px 8px;
-}
+        .dropdown-menu a:last-child {
+          border-radius: 0 0 8px 8px;
+        }
 
-.dropdown-menu a:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #ffffff !important;
-  padding-left: 24px;
-}
+        .dropdown-menu a:hover {
+          background: rgba(255, 255, 255, 0.15);
+          color: #ffffff !important;
+          padding-left: 24px;
+        }
 
-/* Mobile dropdown styles */
-.mobile-dropdown {
-  display: flex;
-  flex-direction: column;
-}
+        /* Mobile dropdown styles */
+        .mobile-dropdown {
+          display: flex;
+          flex-direction: column;
+        }
 
-.mobile-dropdown-trigger {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1rem 0;
-  cursor: pointer;
-  color: white;
-  text-decoration: none;
-}
+        .mobile-dropdown-trigger {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding:  0;
+          cursor: pointer;
+          color: #ff9800 !important;
+          text-decoration: none;
+          font-weight: 600;
+        }
 
+        .mobile-dropdown-trigger:hover {
+          color: #ffd54f !important;
+        }
 
         .mobile-dropdown-content {
           display: flex;
@@ -165,7 +183,7 @@ export default function Header() {
         }
 
         .mobile-dropdown-content a:hover {
-          color: #6366f1;
+          color: #ffd54f;
         }
       `}</style>
 
@@ -203,7 +221,7 @@ export default function Header() {
               </div>
               <div className={`dropdown-menu ${servicesDropdownOpen ? 'open' : ''}`}>
                 <Link 
-                  href="/services" 
+                  href="/services/photography" 
                   onClick={() => setServicesDropdownOpen(false)}
                 >
                   Photography
@@ -218,7 +236,7 @@ export default function Header() {
             </div>
 
             <Link href="/gallery">Gallery</Link>
-            <Link href="/templates">Templates</Link>
+            <Link href="/templates">Live links</Link>
             <Link href="/about">About</Link>
             <Link href="/contact">Contact</Link>
           </nav>
@@ -254,7 +272,7 @@ export default function Header() {
             </div>
             <div className={`mobile-dropdown-content ${servicesDropdownOpen ? 'open' : ''}`}>
               <Link 
-                href="/services" 
+                href="/services/photography" 
                 onClick={() => {
                   setMenuOpen(false);
                   setServicesDropdownOpen(false);
@@ -278,7 +296,7 @@ export default function Header() {
             Gallery
           </Link>
           <Link href="/templates" onClick={() => setMenuOpen(false)}>
-            Templates
+            Live Links
           </Link>
           <Link href="/about" onClick={() => setMenuOpen(false)}>
             About

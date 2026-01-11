@@ -1,7 +1,6 @@
 'use client'
 import React from 'react'
 
-
 const packages = [
   {
     name: "Basic Package",
@@ -60,7 +59,6 @@ const packages = [
   },
 ]
 
-
 export default function Packages() {
   return (
     <div style={{ width: "100%", minHeight: "100vh", backgroundColor: "white", paddingTop: "20px", paddingBottom: "20px" }}>
@@ -68,7 +66,6 @@ export default function Packages() {
         * {
           box-sizing: border-box;
         }
-
 
         /* Mobile Styles - 1 column, full width */
         @media (max-width: 640px) {
@@ -79,50 +76,41 @@ export default function Packages() {
             padding: 16px;
           }
 
-
           .package-card {
             padding: 20px !important;
           }
-
 
           .package-icon {
             font-size: 32px !important;
             padding: 10px 12px !important;
           }
 
-
           .package-name {
             font-size: 16px !important;
           }
-
 
           .package-sheets {
             font-size: 11px !important;
           }
 
-
           .package-price {
             font-size: 24px !important;
           }
 
-
           .feature-list {
             gap: 6px !important;
           }
-
 
           .feature-item {
             padding: 8px 10px !important;
             font-size: 12px !important;
           }
 
-
           .cta-button {
             padding: 12px 16px !important;
             font-size: 12px !important;
           }
         }
-
 
         /* Tablet Styles - 2 columns */
         @media (min-width: 641px) and (max-width: 1024px) {
@@ -133,50 +121,41 @@ export default function Packages() {
             padding: 20px;
           }
 
-
           .package-card {
             padding: 22px !important;
           }
-
 
           .package-icon {
             font-size: 36px !important;
             padding: 12px 14px !important;
           }
 
-
           .package-name {
             font-size: 18px !important;
           }
-
 
           .package-sheets {
             font-size: 11px !important;
           }
 
-
           .package-price {
             font-size: 28px !important;
           }
 
-
           .feature-list {
             gap: 7px !important;
           }
-
 
           .feature-item {
             padding: 9px 11px !important;
             font-size: 12px !important;
           }
 
-
           .cta-button {
             padding: 12px 16px !important;
             font-size: 13px !important;
           }
         }
-
 
         /* Desktop Styles - 4 compact columns */
         @media (min-width: 1025px) {
@@ -189,78 +168,64 @@ export default function Packages() {
             margin: 0 auto;
           }
 
-
           .package-card {
             padding: 18px !important;
           }
-
 
           .package-icon {
             font-size: 32px !important;
             padding: 10px 12px !important;
           }
 
-
           .package-name {
             font-size: 15px !important;
           }
-
 
           .package-sheets {
             font-size: 10px !important;
           }
 
-
           .package-price {
             font-size: 22px !important;
           }
 
-
           .price-label {
             font-size: 9px !important;
           }
-
 
           .package-header {
             margin-bottom: 12px !important;
             gap: 8px !important;
           }
 
-
           .price-box {
             padding: 12px 14px !important;
             margin-bottom: 14px !important;
           }
 
-
           .features-section {
             margin-bottom: 16px !important;
           }
-
 
           .feature-header {
             font-size: 11px !important;
             margin-bottom: 10px !important;
           }
 
-
           .feature-list {
             gap: 6px !important;
           }
-
 
           .feature-item {
             padding: 6px 8px !important;
             font-size: 11px !important;
           }
 
-
           .cta-button {
             padding: 10px 14px !important;
             font-size: 12px !important;
           }
         }
-
 
         /* Large Desktop - Still 4 columns with normal sizing */
         @media (min-width: 1400px) {
@@ -272,17 +237,22 @@ export default function Packages() {
         }
       `}</style>
 
-
       <div className="packages-container">
         {packages.map((pkg, idx) => (
           <div
             key={idx}
             className={`package-card`}
             style={{
-              background: `linear-gradient(135deg, ${pkg.color}15 0%, ${pkg.color}08 100%)`,
+              background: pkg.featured
+                ? `linear-gradient(135deg, ${pkg.color}15 0%, ${pkg.color}08 100%)`
+                : "#ffffff",
               borderRadius: "12px",
-              boxShadow: `0 8px 24px ${pkg.color}20`,
-              border: `2px solid ${pkg.color}`,
+              boxShadow: pkg.featured
+                ? `0 8px 24px ${pkg.color}20`
+                : "0 2px 8px rgba(0, 0, 0, 0.08)",
+              border: pkg.featured
+                ? `2px solid ${pkg.color}`
+                : "1px solid #e5e7eb",
               position: "relative",
               overflow: "hidden",
               display: "flex",
@@ -290,11 +260,15 @@ export default function Packages() {
               minHeight: "100%",
             }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = `0 12px 32px ${pkg.color}30`
+              e.currentTarget.style.boxShadow = pkg.featured
+                ? `0 12px 32px ${pkg.color}30`
+                : "0 4px 16px rgba(0, 0, 0, 0.12)"
               e.currentTarget.style.transform = "translateY(-2px)"
             }}
             onMouseLeave={(e) => {
-              e.currentTarget.style.boxShadow = `0 8px 24px ${pkg.color}20`
+              e.currentTarget.style.boxShadow = pkg.featured
+                ? `0 8px 24px ${pkg.color}20`
+                : "0 2px 8px rgba(0, 0, 0, 0.08)"
               e.currentTarget.style.transform = "translateY(0)"
             }}
           >
@@ -355,7 +329,6 @@ export default function Packages() {
               </div>
             </div>
 
-
             {/* Featured Badge */}
             {pkg.featured && (
               <div style={{
@@ -374,7 +347,6 @@ export default function Packages() {
                 ⭐ Most Popular
               </div>
             )}
-
 
             {/* Price */}
             <div
@@ -414,7 +386,6 @@ export default function Packages() {
                 {pkg.price}
               </p>
             </div>
-
 
             {/* Features */}
             <div
@@ -480,55 +451,14 @@ export default function Packages() {
                       e.currentTarget.style.paddingLeft = "10px"
                     }}
                   >
-                    <span
-                      style={{
-                        color: pkg.color,
-                        fontSize: "16px",
-                        fontWeight: "bold",
-                        flexShrink: 0,
-                        marginTop: "2px",
-                      }}
-                    >
-                      ✓
-                    </span>
+                    
                     <span style={{ lineHeight: 1.3 }}>{feature}</span>
                   </li>
                 ))}
               </ul>
             </div>
 
-
-            {/* CTA Button */}
-            <button
-              className="cta-button"
-              style={{
-                width: "100%",
-                padding: "12px 16px",
-                background: pkg.color,
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                fontWeight: "800",
-                fontSize: "13px",
-                cursor: "pointer",
-                textTransform: "uppercase",
-                letterSpacing: "0.4px",
-                boxShadow: `0 4px 12px ${pkg.color}30`,
-                position: "relative",
-                zIndex: 1,
-                marginTop: "auto",
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.opacity = "0.9"
-                e.target.style.transform = "translateY(-1px)"
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.opacity = "1"
-                e.target.style.transform = "translateY(0)"
-              }}
-            >
-              💬 Inquire Now
-            </button>
+            
           </div>
         ))}
       </div>

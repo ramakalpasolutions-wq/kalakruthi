@@ -1,10 +1,10 @@
 import Link from "next/link";
+import { FaPhoneAlt, FaEnvelope, FaMapMarkerAlt } from "react-icons/fa";
 
 export default function Footer() {
   return (
     <footer className="footer">
       <div className="footer-container">
-
         {/* BRAND */}
         <div className="footer-section">
           <h3 className="footer-brand">Kalakruthi</h3>
@@ -28,35 +28,52 @@ export default function Footer() {
         </div>
 
         {/* SOCIAL */}
-<div className="footer-section">
-  <h4 className="social-title">Social</h4>
+        <div className="footer-section">
+          <h4 className="social-title">Social</h4>
+          <ul className="social-text-list">
+            <li>
+              <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
+                <i className="fab fa-facebook-f icon"></i> Facebook
+              </a>
+            </li>
+            <li>
+              <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
+                <i className="fab fa-instagram icon"></i> Instagram
+              </a>
+            </li>
+            <li>
+              <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
+                <i className="fab fa-youtube icon"></i> YouTube
+              </a>
+            </li>
+          </ul>
+        </div>
 
-  <ul className="social-text-list">
-    <li>
-      <a href="https://facebook.com" target="_blank" rel="noopener noreferrer">
-        <i className="fab fa-facebook-f icon"></i> Facebook
-      </a>
-    </li>
-
-    <li>
-      <a href="https://instagram.com" target="_blank" rel="noopener noreferrer">
-        <i className="fab fa-instagram icon"></i> Instagram
-      </a>
-    </li>
-
-    <li>
-      <a href="https://youtube.com" target="_blank" rel="noopener noreferrer">
-        <i className="fab fa-youtube icon"></i> YouTube
-      </a>
-    </li>
-
-     {/* <li>
-      <a href="https://x.com" target="_blank" rel="noopener noreferrer">
-        <i className="fab fa-x-twitter icon"></i> X
-      </a>
-    </li> */}
-  </ul>
-</div>
+        {/* ✅ CONTACT DETAILS - 4TH COLUMN */}
+        <div className="footer-section">
+          <h4>Contact Details</h4>
+          <ul className="contact-details-list">
+            <li className="info-item">
+              <FaPhoneAlt size={18} />
+              <a href="tel:+919876543210" style={{ textDecoration: 'none' }}>
+                +91 98765 43210
+              </a>
+            </li>
+            <li className="info-item">
+              <FaEnvelope size={18} />
+              <a href="mailto:contact@kalakruthi.com" style={{ textDecoration: 'none' }}>
+                contact@kalakruthi.com
+              </a>
+            </li>
+            <li className="info-item">
+              <FaMapMarkerAlt size={18} />
+              <span>
+                Guntur, Andhra Pradesh<br />
+                India - 522001
+              </span>
+            </li>
+          </ul>
+        </div>
 
       </div>
 

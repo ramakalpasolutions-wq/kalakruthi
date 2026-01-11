@@ -2,60 +2,126 @@
 
 import { useState, useRef, useEffect } from "react";
 
-/* ===============================
-   VIDEO PLAYER COMPONENT
+/* =============================== 
+   VIDEO PLAYER WITH EMBED SUPPORT
 ================================ */
 function VideoPlayer({ video, onClose }) {
+  const getEmbedUrl = (url) => {
+    if (!url) return null;
+
+    // YouTube
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      const videoId = url.includes('youtu.be') 
+        ? url.split('youtu.be/')[1]?.split('?')[0]
+        : new URLSearchParams(new URL(url).search).get('v');
+      return `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    }
+
+    // Vimeo
+    if (url.includes('vimeo.com')) {
+      const videoId = url.split('vimeo.com/')[1]?.split('?')[0];
+      return `https://player.vimeo.com/video/${videoId}?autoplay=1`;
+    }
+
+    // Direct video URL
+    return url;
+  };
+
+  const videoUrl = video.url || video.secureUrl;
+  const embedUrl = getEmbedUrl(videoUrl);
+  const isDirectVideo = embedUrl && !embedUrl.includes('youtube') && !embedUrl.includes('vimeo');
+
+  useEffect(() => {
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleEscape);
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'unset';
+    };
+  }, [onClose]);
+
   return (
     <div className="video-modal" onClick={onClose}>
       <div className="video-modal-content" onClick={(e) => e.stopPropagation()}>
         <button className="close-button" onClick={onClose}>
           ✕
         </button>
-        <video
-          src={video.url || video.secureUrl}
-          controls
-          autoPlay
-          className="video-player"
-        />
-        {video.title && <h3 className="video-title">{video.title}</h3>}
+        
+        {isDirectVideo ? (
+          <video
+            src={embedUrl}
+            controls
+            autoPlay
+            className="video-player"
+          />
+        ) : (
+          <iframe
+            src={embedUrl}
+            className="video-player"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        )}
       </div>
     </div>
   );
 }
 
 /* ===============================
-   VIDEO CARD COMPONENT
+   VIDEO CARD WITH AUTO THUMBNAILS
 ================================ */
-function VideoCard({ video, onClick }) {
+function VideoCard({ video, onClick, categoryName }) {
   const [thumbnailLoaded, setThumbnailLoaded] = useState(false);
+
+  const getThumbnail = () => {
+    const url = video.url || video.secureUrl || video;
+    
+    if (typeof url === 'string') {
+      // YouTube thumbnail
+      if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        const videoId = url.includes('youtu.be') 
+          ? url.split('youtu.be/')[1]?.split('?')[0]
+          : new URLSearchParams(new URL(url).search).get('v');
+        return `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+      }
+
+      // Vimeo placeholder
+      if (url.includes('vimeo.com')) {
+        return `https://via.placeholder.com/640x360/667eea/ffffff?text=Vimeo+Video`;
+      }
+    }
+
+    return `https://via.placeholder.com/640x360/667eea/ffffff?text=Video`;
+  };
+
+  const thumbnail = getThumbnail();
 
   return (
     <div className="video-card" onClick={() => onClick(video)}>
       <div className="video-thumbnail">
-        {video.thumbnail ? (
-          <>
-            <img
-              src={video.thumbnail}
-              alt={video.title || "Video thumbnail"}
-              onLoad={() => setThumbnailLoaded(true)}
-              style={{
-                opacity: thumbnailLoaded ? 1 : 0,
-                transition: "opacity 0.5s ease-in-out",
-              }}
-            />
-            {!thumbnailLoaded && <div className="thumbnail-skeleton" />}
-          </>
-        ) : (
-          <div className="no-thumbnail">
-            <span style={{ fontSize: "48px" }}>🎬</span>
-          </div>
-        )}
+        <img
+          src={thumbnail}
+          alt={categoryName || "Video"}
+          onLoad={() => setThumbnailLoaded(true)}
+          onError={(e) => {
+            e.target.src = 'https://via.placeholder.com/640x360/667eea/ffffff?text=Video';
+          }}
+          style={{
+            opacity: thumbnailLoaded ? 1 : 0,
+            transition: "opacity 0.5s ease-in-out",
+          }}
+        />
+        {!thumbnailLoaded && <div className="thumbnail-skeleton" />}
+        
         <div className="play-overlay">
           <div className="play-button">▶</div>
         </div>
       </div>
-      {video.title && <div className="video-name">{video.title}</div>}
+      <div className="video-name">{categoryName}</div>
     </div>
   );
 }
@@ -82,12 +148,15 @@ export default function VideographyPage() {
   }, []);
 
   useEffect(() => {
-    // Fetch videography categories from API
-    fetch("/api/videography")
+    // Fetch videography services from API
+    fetch("/api/services?type=videography")
       .then((res) => res.json())
       .then((data) => {
-        console.log("✅ Fetched videography categories:", data);
-        setDbCategories(Array.isArray(data) ? data : []);
+        console.log("✅ Fetched services:", data);
+        const videographyServices = Array.isArray(data) 
+          ? data.filter(s => s.type === 'videography') 
+          : [];
+        setDbCategories(videographyServices);
         setLoading(false);
       })
       .catch((err) => {
@@ -217,16 +286,6 @@ export default function VideographyPage() {
           object-fit: cover;
         }
 
-        .no-thumbnail {
-          width: 100%;
-          height: 100%;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-        }
-
         .play-overlay {
           position: absolute;
           top: 0;
@@ -275,23 +334,14 @@ export default function VideographyPage() {
           left: 0;
           width: 100%;
           height: 100%;
-          background: linear-gradient(
-            90deg,
-            #f0f0f0 25%,
-            #e0e0e0 50%,
-            #f0f0f0 75%
-          );
+          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
           background-size: 200% 100%;
           animation: shimmer 1.5s infinite;
         }
 
         @keyframes shimmer {
-          0% {
-            background-position: -200% 0;
-          }
-          100% {
-            background-position: 200% 0;
-          }
+          0% { background-position: -200% 0; }
+          100% { background-position: 200% 0; }
         }
 
         .video-modal {
@@ -300,7 +350,7 @@ export default function VideographyPage() {
           left: 0;
           width: 100%;
           height: 100%;
-          background: rgba(0, 0, 0, 0.9);
+          background: rgba(0, 0, 0, 0.95);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -309,12 +359,8 @@ export default function VideographyPage() {
         }
 
         @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
 
         .video-modal-content {
@@ -331,12 +377,13 @@ export default function VideographyPage() {
           top: 20px;
           right: 20px;
           z-index: 10000;
-          background: rgba(255, 255, 255, 0.9);
+          background: rgba(220, 38, 38, 0.9);
           border: none;
           width: 40px;
           height: 40px;
           border-radius: 50%;
           font-size: 24px;
+          color: white;
           cursor: pointer;
           display: flex;
           align-items: center;
@@ -345,22 +392,15 @@ export default function VideographyPage() {
         }
 
         .close-button:hover {
-          background: #ffffff;
-          transform: rotate(90deg);
+          background: rgba(220, 38, 38, 1);
+          transform: rotate(90deg) scale(1.1);
         }
 
         .video-player {
           width: 100%;
-          max-height: 80vh;
+          height: 80vh;
           display: block;
-        }
-
-        .video-title {
-          padding: 16px;
-          color: white;
-          text-align: center;
-          font-size: 18px;
-          margin: 0;
+          border: none;
         }
 
         .loading-spinner {
@@ -416,13 +456,14 @@ export default function VideographyPage() {
 
           {activeCategory && (
             <div ref={videosRef} style={{ marginTop: "40px" }}>
-              {activeCategory.videos && activeCategory.videos.length > 0 ? (
+              {activeCategory.images && activeCategory.images.length > 0 ? (
                 <div style={gridStyle}>
-                  {activeCategory.videos.map((video, index) => (
+                  {activeCategory.images.map((video, index) => (
                     <VideoCard
                       key={index}
                       video={video}
                       onClick={setSelectedVideo}
+                      categoryName={activeCategory.name}
                     />
                   ))}
                 </div>
@@ -442,31 +483,45 @@ export default function VideographyPage() {
               <div style={gridStyle}>
                 {dbCategories.map((category) => {
                   const firstVideo =
-                    category.videos && category.videos.length > 0
-                      ? category.videos[0]
+                    category.images && category.images.length > 0
+                      ? category.images[0]
                       : null;
                   return (
                     <div
                       key={category._id || category.id}
-                      className="video-card"
                       onClick={() => handleToggle(category)}
+                      style={{ cursor: 'pointer' }}
                     >
-                      <div className="video-thumbnail">
-                        {firstVideo?.thumbnail ? (
-                          <img
-                            src={firstVideo.thumbnail}
-                            alt={category.name}
-                          />
-                        ) : (
-                          <div className="no-thumbnail">
-                            <span style={{ fontSize: "48px" }}>🎬</span>
+                      {firstVideo ? (
+                        <VideoCard
+                          video={firstVideo}
+                          onClick={(video) => {
+                            // ✅ FIXED: Separate handler for preview click
+                            setSelectedVideo(video);
+                          }}
+                          categoryName={category.name}
+                        />
+                      ) : (
+                        <div className="video-card">
+                          <div className="video-thumbnail">
+                            <div style={{
+                              width: '100%',
+                              height: '100%',
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'white'
+                            }}>
+                              <span style={{ fontSize: "48px" }}>🎬</span>
+                            </div>
+                            <div className="play-overlay">
+                              <div className="play-button">▶</div>
+                            </div>
                           </div>
-                        )}
-                        <div className="play-overlay">
-                          <div className="play-button">▶</div>
+                          <div className="video-name">{category.name}</div>
                         </div>
-                      </div>
-                      <div className="video-name">{category.name}</div>
+                      )}
                     </div>
                   );
                 })}
@@ -481,7 +536,7 @@ export default function VideographyPage() {
                 No Videography Services Available Yet
               </p>
               <p style={{ fontSize: "16px" }}>
-                Please add video categories from the admin dashboard.
+                Please add video services from the admin dashboard.
               </p>
             </div>
           )}

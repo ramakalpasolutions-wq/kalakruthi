@@ -2,11 +2,13 @@
 import React, { useEffect, useRef } from 'react'
 import Chart from 'chart.js/auto'
 
+
 export default function DashboardStats({ customers, setActive, setCustomerFilter }) {
   const barChartRef = useRef(null)
   const donutChartRef = useRef(null)
   const barChartInstance = useRef(null)
   const donutChartInstance = useRef(null)
+
 
   const calculateDashboardTotals = () => {
     let totalRevenue = 0
@@ -31,7 +33,9 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
     }
   }
 
+
   const dashboardTotals = calculateDashboardTotals()
+
 
   // Bar Chart - Clean & Simple
   useEffect(() => {
@@ -41,6 +45,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
       if (barChartInstance.current) {
         barChartInstance.current.destroy()
       }
+
 
       barChartInstance.current = new Chart(ctx, {
         type: 'bar',
@@ -87,6 +92,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
     }
   }, [dashboardTotals])
 
+
   // Donut Chart - Clean & Simple
   useEffect(() => {
     if (donutChartRef.current) {
@@ -95,6 +101,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
       if (donutChartInstance.current) {
         donutChartInstance.current.destroy()
       }
+
 
       donutChartInstance.current = new Chart(ctx, {
         type: 'doughnut',
@@ -135,15 +142,83 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
     }
   }, [dashboardTotals])
 
+
   return (
     <>
+      <style>{`
+        /* Stats Grid - Responsive */
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 16px;
+          margin-bottom: 24px;
+        }
+
+        /* Tablet: Stats Grid - 2 columns */
+        @media (max-width: 1024px) {
+          .stats-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 12px !important;
+          }
+        }
+
+        /* Mobile: Stats Grid - 1 column */
+        @media (max-width: 640px) {
+          .stats-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+          
+          .stat-card {
+            padding: 12px !important;
+          }
+          
+          .stat-card .icon {
+            font-size: 20px !important;
+          }
+          
+          .stat-card .title {
+            font-size: 10px !important;
+          }
+          
+          .stat-card .value {
+            font-size: 18px !important;
+          }
+        }
+
+        /* Charts Grid - Responsive */
+        .charts-grid {
+          display: grid;
+          grid-template-columns: repeat(2, 1fr);
+          gap: 20px;
+          margin-bottom: 24px;
+        }
+
+        /* Tablet & Mobile: Charts Stack vertically */
+        @media (max-width: 1024px) {
+          .charts-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+          }
+        }
+
+        @media (max-width: 640px) {
+          .charts-grid {
+            gap: 12px !important;
+          }
+          
+          .chart-card {
+            padding: 16px !important;
+          }
+          
+          .chart-container {
+            height: 250px !important;
+          }
+        }
+      `}</style>
+
       {/* Stats Grid */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, 1fr)",
-        gap: "16px",
-        marginBottom: "24px",
-      }}>
+      <div className="stats-grid">
         <StatCard
           icon="👥"
           title="Total Customers"
@@ -187,15 +262,11 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
         />
       </div>
 
+
       {/* Charts Grid */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
-        gap: "20px",
-        marginBottom: "24px",
-      }}>
+      <div className="charts-grid">
         {/* Bar Chart Card */}
-        <div style={{
+        <div className="chart-card" style={{
           background: "white",
           borderRadius: "12px",
           padding: "20px",
@@ -217,13 +288,14 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
               color: '#1f2937'
             }}>Revenue Breakdown</h3>
           </div>
-          <div style={{ height: '280px', position: 'relative' }}>
+          <div className="chart-container" style={{ height: '280px', position: 'relative' }}>
             <canvas ref={barChartRef}></canvas>
           </div>
         </div>
 
+
         {/* Donut Chart Card */}
-        <div style={{
+        <div className="chart-card" style={{
           background: "white",
           borderRadius: "12px",
           padding: "20px",
@@ -245,7 +317,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
               color: '#1f2937'
             }}>Payment Status</h3>
           </div>
-          <div style={{ height: '280px', position: 'relative' }}>
+          <div className="chart-container" style={{ height: '280px', position: 'relative' }}>
             <canvas ref={donutChartRef}></canvas>
           </div>
         </div>
@@ -254,9 +326,11 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
   )
 }
 
+
 function StatCard({ icon, title, value, color, onClick, valueSize = "28px" }) {
   return (
     <div
+      className="stat-card"
       onClick={onClick}
       style={{
         background: "white",
@@ -276,7 +350,7 @@ function StatCard({ icon, title, value, color, onClick, valueSize = "28px" }) {
         e.currentTarget.style.transform = "translateY(0)"
       }}
     >
-      <div style={{ fontSize: "24px", marginBottom: "8px" }}>{icon}</div>
+      <div className="icon" style={{ fontSize: "24px", marginBottom: "8px" }}>{icon}</div>
       <p style={{
         color: "#6b7280",
         fontSize: "11px",
@@ -287,7 +361,7 @@ function StatCard({ icon, title, value, color, onClick, valueSize = "28px" }) {
       }}>
         {title}
       </p>
-      <h3 style={{
+      <h3 className="value" style={{
         fontSize: valueSize,
         fontWeight: "800",
         color: "#1f2937",

@@ -7,6 +7,7 @@ import Header from "@/components/header/header";
 import Footer from "@/components/footer/footer";
 import { Toaster } from "react-hot-toast";
 import GlobalLoader from "@/components/GlobalLoader";
+import { FaWhatsapp } from "react-icons/fa";
 
 export default function ClientLayout({ children }) {
   const pathname = usePathname();
@@ -25,6 +26,15 @@ export default function ClientLayout({ children }) {
       <Header />
       <Toaster position="top-right" />
       <GlobalLoader loading={loading} />
+      <a 
+        className="whatsapp-btn" 
+        href="https://wa.me/919876543210"
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Chat on WhatsApp"
+      >
+        <FaWhatsapp />
+      </a>
       <main>{children}</main>
       <Footer />
     </>

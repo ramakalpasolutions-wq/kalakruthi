@@ -4,6 +4,7 @@ import { SERVICES_BY_EVENT } from './constants'
 import { generateQuotationPDF } from './QuotationPDF'
 
 
+
 export default function Quotation({ 
   quotation, 
   setQuotation, 
@@ -30,14 +31,17 @@ export default function Quotation({
     })
 
 
+
     const discountPercent = parseFloat(quotation.discount) || 0
     const discountAmount = (subtotal * discountPercent) / 100
     const total = subtotal - discountAmount
 
 
+
     const formatNumber = (num) => {
       return Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")
     }
+
 
 
     return {
@@ -47,6 +51,7 @@ export default function Quotation({
       discountPercent: discountPercent,
     }
   }
+
 
 
   const toggleEventSelection = (eventType) => {
@@ -94,9 +99,11 @@ export default function Quotation({
   }
 
 
+
   const handleAddCustomEvent = () => {
     const trimmed = newEventName.trim()
     if (!trimmed) return
+
 
 
     if (quotation.selectedEvents.includes(trimmed)) {
@@ -106,9 +113,11 @@ export default function Quotation({
     }
 
 
+
     const baseServices = SERVICES_BY_EVENT["Other"] || []
     const newEventServices = { ...quotation.eventServices }
     const newServiceAmounts = { ...quotation.serviceAmounts }
+
 
 
     baseServices.forEach((service) => {
@@ -116,6 +125,7 @@ export default function Quotation({
       newEventServices[key] = true
       newServiceAmounts[key] = service.amount
     })
+
 
 
     setQuotation((prev) => ({
@@ -130,9 +140,11 @@ export default function Quotation({
     }))
 
 
+
     setActiveRequirementTab(trimmed)
     setNewEventName("")
   }
+
 
 
   const sendQuotationEmail = async () => {
@@ -179,6 +191,7 @@ export default function Quotation({
   }
 
 
+
   const downloadQuotationPDF = () => {
     const pdf = generateQuotationPDF(quotation, calculateQuotationTotal)
     pdf.save(`Quotation_${quotation.firstName}${quotation.lastName}.pdf`)
@@ -186,13 +199,154 @@ export default function Quotation({
   }
 
 
+
   const totals = calculateQuotationTotal()
+
 
 
   return (
     <div>
+      <style>{`
+        /* Main Container - Responsive Grid */
+        .quotation-container {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          align-items: start;
+        }
+
+        /* Desktop & Tablet: 2 columns */
+        @media (max-width: 1024px) {
+          .quotation-container {
+            grid-template-columns: 1fr;
+            gap: 20px;
+          }
+        }
+
+        /* Mobile: 1 column with reduced spacing */
+        @media (max-width: 640px) {
+          .quotation-container {
+            gap: 12px;
+          }
+
+          .quotation-section {
+            padding: 16px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .section-title {
+            font-size: 16px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .form-group {
+            gap: 12px !important;
+          }
+
+          .form-input,
+          .form-select {
+            padding: 8px !important;
+            font-size: 13px !important;
+          }
+
+          .form-label {
+            font-size: 11px !important;
+            margin-bottom: 4px !important;
+          }
+
+          .event-buttons-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+            gap: 8px !important;
+          }
+
+          .event-button {
+            padding: 10px !important;
+            font-size: 12px !important;
+          }
+
+          .custom-event-container {
+            gap: 6px !important;
+          }
+
+          .custom-event-input {
+            padding: 8px !important;
+            font-size: 13px !important;
+          }
+
+          .custom-event-btn {
+            padding: 8px 12px !important;
+            font-size: 13px !important;
+          }
+
+          .event-tabs {
+            gap: 6px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .event-tab-button {
+            padding: 8px 12px !important;
+            font-size: 12px !important;
+          }
+
+          .event-dates-display {
+            padding: 10px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .date-input {
+            padding: 6px !important;
+            font-size: 12px !important;
+          }
+
+          .requirements-list {
+            gap: 0 !important;
+          }
+
+          .requirement-item {
+            padding: 8px 0 !important;
+          }
+
+          .requirement-label {
+            font-size: 13px !important;
+          }
+
+          .requirement-input {
+            width: 100px !important;
+            padding: 6px !important;
+            font-size: 12px !important;
+          }
+
+          .totals-section {
+            padding: 16px !important;
+            gap: 8px !important;
+          }
+
+          .total-row {
+            font-size: 13px !important;
+          }
+
+          .total-value {
+            font-size: 14px !important;
+          }
+
+          .total-final {
+            font-size: 16px !important;
+          }
+
+          .submit-button {
+            padding: 10px !important;
+            font-size: 13px !important;
+          }
+
+          .two-col-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+          }
+        }
+      `}</style>
+
       {/* Two Column Layout Container */}
-      <div style={{
+      <div className="quotation-container" style={{
         display: "grid",
         gridTemplateColumns: "1fr 1fr",
         gap: "20px",
@@ -202,25 +356,26 @@ export default function Quotation({
         {/* LEFT COLUMN - Customer Details and Event Details */}
         <div>
           {/* Customer Details Section */}
-          <div style={{
+          <div className="quotation-section" style={{
             background: "white",
             padding: "24px",
             borderRadius: "12px",
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
             marginBottom: "20px",
           }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
+            <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
               📋 Customer Details
             </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
+            <div className="form-group" style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
                   Name
                 </label>
                 <input
                   type="text"
                   value={quotation.firstName}
                   onChange={(e) => setQuotation({ ...quotation, firstName: e.target.value })}
+                  className="form-input"
                   style={{
                     width: "100%",
                     padding: "10px",
@@ -233,12 +388,13 @@ export default function Quotation({
               
               {/* Time Slot Field - Half Day / Full Day */}
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
                   ⏰ Time Slot
                 </label>
                 <select
                   value={quotation.timeSlot || "Full Day"}
                   onChange={(e) => setQuotation({ ...quotation, timeSlot: e.target.value })}
+                  className="form-select"
                   style={{
                     width: "100%",
                     padding: "10px",
@@ -253,10 +409,9 @@ export default function Quotation({
                 </select>
               </div>
 
-
               {/* Location Field */}
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
                   📍 Location
                 </label>
                 <input
@@ -264,6 +419,7 @@ export default function Quotation({
                   placeholder="Enter event location"
                   value={quotation.location || ""}
                   onChange={(e) => setQuotation({ ...quotation, location: e.target.value })}
+                  className="form-input"
                   style={{
                     width: "100%",
                     padding: "10px",
@@ -274,15 +430,15 @@ export default function Quotation({
                 />
               </div>
 
-
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
                   Phone Number
                 </label>
                 <input
                   type="tel"
                   value={quotation.customerPhone}
                   onChange={(e) => setQuotation({ ...quotation, customerPhone: e.target.value })}
+                  className="form-input"
                   style={{
                     width: "100%",
                     padding: "10px",
@@ -294,13 +450,14 @@ export default function Quotation({
               </div>
               
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
                   Email Address
                 </label>
                 <input
                   type="email"
                   value={quotation.customerEmail}
                   onChange={(e) => setQuotation({ ...quotation, customerEmail: e.target.value })}
+                  className="form-input"
                   style={{
                     width: "100%",
                     padding: "10px",
@@ -311,16 +468,17 @@ export default function Quotation({
                 />
               </div>
 
-              {/* Start and End Date Side by Side - MOVED AFTER EMAIL */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              {/* Start and End Date Side by Side */}
+              <div className="two-col-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                  <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
                     📅 Start Date
                   </label>
                   <input
                     type="date"
                     value={quotation.globalStartDate || ""}
                     onChange={(e) => setQuotation({ ...quotation, globalStartDate: e.target.value })}
+                    className="form-input"
                     style={{
                       width: "100%",
                       padding: "10px",
@@ -331,13 +489,14 @@ export default function Quotation({
                   />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                  <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
                     📅 End Date
                   </label>
                   <input
                     type="date"
                     value={quotation.globalEndDate || ""}
                     onChange={(e) => setQuotation({ ...quotation, globalEndDate: e.target.value })}
+                    className="form-input"
                     style={{
                       width: "100%",
                       padding: "10px",
@@ -351,23 +510,23 @@ export default function Quotation({
             </div>
           </div>
 
-
           {/* Event Selection */}
-          <div style={{
+          <div className="quotation-section" style={{
             background: "white",
             padding: "24px",
             borderRadius: "12px",
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
             marginBottom: "20px",
           }}>
-            <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
+            <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
               🎉 Select Event Types
             </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", marginBottom: "16px" }}>
+            <div className="event-buttons-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", marginBottom: "16px" }}>
               {Object.keys(SERVICES_BY_EVENT).filter(e => e !== "Other").map((eventType) => (
                 <button
                   key={eventType}
                   onClick={() => toggleEventSelection(eventType)}
+                  className="event-button"
                   style={{
                     padding: "12px",
                     border: quotation.selectedEvents.includes(eventType)
@@ -388,13 +547,14 @@ export default function Quotation({
             </div>
             
             {/* Custom Event Input */}
-            <div style={{ display: "flex", gap: "8px" }}>
+            <div className="custom-event-container" style={{ display: "flex", gap: "8px" }}>
               <input
                 type="text"
                 placeholder="Add custom event..."
                 value={newEventName}
                 onChange={(e) => setNewEventName(e.target.value)}
                 onKeyPress={(e) => e.key === "Enter" && handleAddCustomEvent()}
+                className="custom-event-input"
                 style={{
                   flex: 1,
                   padding: "10px",
@@ -405,6 +565,7 @@ export default function Quotation({
               />
               <button
                 onClick={handleAddCustomEvent}
+                className="custom-event-btn"
                 style={{
                   padding: "10px 20px",
                   background: "#10b981",
@@ -420,10 +581,10 @@ export default function Quotation({
             </div>
           </div>
 
-
           {/* Total and Actions */}
           {quotation.selectedEvents.length > 0 && (
             <div
+              className="quotation-section"
               style={{
                 background: "white",
                 padding: "24px",
@@ -434,6 +595,7 @@ export default function Quotation({
               <button
                 onClick={sendQuotationEmail}
                 disabled={loading}
+                className="submit-button"
                 style={{
                   width: "100%",
                   padding: "12px",
@@ -453,7 +615,6 @@ export default function Quotation({
           )}
         </div>
 
-
         {/* RIGHT COLUMN - Requirements with Event Tabs at Top and Totals at Bottom */}
         <div>
           {quotation.selectedEvents.length > 0 && (
@@ -463,22 +624,23 @@ export default function Quotation({
               gap: "20px"
             }}>
               {/* Event Tabs and Dates Card */}
-              <div style={{
+              <div className="quotation-section" style={{
                 background: "white",
                 padding: "24px",
                 borderRadius: "12px",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
               }}>
-                <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
+                <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
                   📸 Select Requirements
                 </h3>
                 
                 {/* Event Tabs */}
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+                <div className="event-tabs" style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
                   {quotation.selectedEvents.map((eventType) => (
                     <button
                       key={eventType}
                       onClick={() => setActiveRequirementTab(eventType)}
+                      className="event-tab-button"
                       style={{
                         padding: "10px 16px",
                         background: activeRequirementTab === eventType ? "#10b981" : "#f3f4f6",
@@ -496,19 +658,18 @@ export default function Quotation({
                   ))}
                 </div>
 
-
                 {/* Event Dates Display */}
                 {activeRequirementTab && (
-                  <div style={{
+                  <div className="event-dates-display" style={{
                     background: "#f9fafb",
                     padding: "12px",
                     borderRadius: "8px",
                     marginBottom: "16px",
                     border: "1px solid #e5e7eb"
                   }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div className="two-col-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                       <div>
-                        <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" }}>
+                        <label className="form-label" style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" }}>
                           Start Date
                         </label>
                         <input
@@ -526,6 +687,7 @@ export default function Quotation({
                               },
                             })
                           }
+                          className="date-input"
                           style={{
                             width: "100%",
                             padding: "8px",
@@ -536,7 +698,7 @@ export default function Quotation({
                         />
                       </div>
                       <div>
-                        <label style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" }}>
+                        <label className="form-label" style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" }}>
                           End Date
                         </label>
                         <input
@@ -554,6 +716,7 @@ export default function Quotation({
                               },
                             })
                           }
+                          className="date-input"
                           style={{
                             width: "100%",
                             padding: "8px",
@@ -567,16 +730,16 @@ export default function Quotation({
                   </div>
                 )}
 
-
-                {/* All Requirements in Single Card - No Separate Boxes */}
+                {/* All Requirements in Single Card */}
                 {activeRequirementTab && (
-                  <div>
+                  <div className="requirements-list">
                     {(SERVICES_BY_EVENT[activeRequirementTab] || []).map((service) => {
                       const serviceKey = `${activeRequirementTab}-${service.name}`
                       const isSelected = quotation.eventServices?.[serviceKey] || false
                       return (
                         <div
                           key={serviceKey}
+                          className="requirement-item"
                           style={{
                             display: "flex",
                             alignItems: "center",
@@ -608,6 +771,7 @@ export default function Quotation({
                           />
                           <label
                             htmlFor={serviceKey}
+                            className="requirement-label"
                             style={{
                               flex: 1,
                               fontWeight: "600",
@@ -630,6 +794,7 @@ export default function Quotation({
                                 },
                               })
                             }}
+                            className="requirement-input"
                             style={{
                               width: "120px",
                               padding: "8px",
@@ -647,22 +812,22 @@ export default function Quotation({
                 )}
               </div>
 
-
               {/* Discount and Totals Card */}
-              <div style={{
+              <div className="totals-section quotation-section" style={{
                 background: "white",
                 padding: "24px",
                 borderRadius: "12px",
                 boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
               }}>
                 <div style={{ marginBottom: "16px" }}>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                  <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
                     Discount (%)
                   </label>
                   <input
                     type="number"
                     value={quotation.discount}
                     onChange={(e) => setQuotation({ ...quotation, discount: e.target.value })}
+                    className="form-input"
                     style={{
                       width: "100%",
                       padding: "10px",
@@ -673,19 +838,18 @@ export default function Quotation({
                   />
                 </div>
 
-
                 {/* Totals Display */}
                 <div style={{ 
                   paddingTop: "16px",
                   borderTop: "2px solid #e5e7eb"
                 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <div className="total-row" style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
                     <span style={{ fontSize: "14px", color: "#6b7280", fontWeight: "600" }}>Total Amount:</span>
-                    <span style={{ fontSize: "16px", fontWeight: "700", color: "#1f2937" }}>₹{totals.subtotal}</span>
+                    <span className="total-value" style={{ fontSize: "16px", fontWeight: "700", color: "#1f2937" }}>₹{totals.subtotal}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
+                  <div className="total-row" style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
                     <span style={{ fontSize: "14px", color: "#6b7280", fontWeight: "600" }}>Discount ({totals.discountPercent}%):</span>
-                    <span style={{ fontSize: "16px", fontWeight: "700", color: "#ef4444" }}>-₹{totals.discountAmount}</span>
+                    <span className="total-value" style={{ fontSize: "16px", fontWeight: "700", color: "#ef4444" }}>-₹{totals.discountAmount}</span>
                   </div>
                   <div style={{ 
                     display: "flex",
@@ -694,7 +858,7 @@ export default function Quotation({
                     borderTop: "2px solid #e5e7eb"
                   }}>
                     <span style={{ fontSize: "16px", fontWeight: "700", color: "#1f2937" }}>Final Amount:</span>
-                    <span style={{ fontSize: "20px", fontWeight: "800", color: "#10b981" }}>₹{totals.total}</span>
+                    <span className="total-final" style={{ fontSize: "20px", fontWeight: "800", color: "#10b981" }}>₹{totals.total}</span>
                   </div>
                 </div>
               </div>
