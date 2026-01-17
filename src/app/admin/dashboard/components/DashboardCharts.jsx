@@ -151,7 +151,12 @@ export default function DashboardCharts({ customers }) {
             👥 Recent Customers
           </h3>
           <div className="recent-customers-list" style={{ maxHeight: "240px", overflowY: "auto" }}>
-            {customers.slice(0, 5).map((c, i) => (
+            {customers
+  .slice()
+  .sort((a, b) => new Date(b.date) - new Date(a.date))
+  .slice(0, 5)
+  .map((c, i) => (
+
               <div
                 key={c.id || c._id || i}
                 className="customer-item"

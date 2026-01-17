@@ -1,8 +1,7 @@
 "use client";
 
-
 import { motion, AnimatePresence } from "framer-motion";
-
+import Image from "next/image"; // ✅ Added for optimized image caching
 
 export default function GlobalLoader({ loading }) {
   return (
@@ -42,20 +41,24 @@ export default function GlobalLoader({ loading }) {
               />
             </div>
 
-
-            {/* LOGO */}
-            <motion.img
-              src="/klogo.png"
-              alt="Kalakruthi Logo"
-              className="w-28 md:w-36 relative z-10 drop-shadow-2xl"
-              animate={{ y: [0, -6, 0] }}
-              transition={{
-                repeat: Infinity,
-                duration: 2.6,
-                ease: "easeInOut",
-              }}
-            />
-
+            {/* ✅ OPTIMIZED CACHED LOGO */}
+            <motion.div className="relative w-28 h-28 md:w-36 md:h-36 relative z-10 drop-shadow-2xl">
+              <Image
+                src="/klogo.png"
+                alt="Kalakruthi Logo"
+                fill
+                priority={true} // ✅ Priority loading for above-fold
+                quality={100}
+                sizes="(max-width: 768px) 112px, 144px"
+                className="object-contain"
+                animate={{ y: [0, -6, 0] }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 2.6,
+                  ease: "easeInOut",
+                }}
+              />
+            </motion.div>
 
             {/* BRAND NAME */}
             <motion.h1
@@ -70,7 +73,6 @@ export default function GlobalLoader({ loading }) {
               Kalakruthi
             </motion.h1>
 
-
             {/* TAGLINE */}
             <motion.p
               className="relative z-10 text-center
@@ -82,7 +84,6 @@ export default function GlobalLoader({ loading }) {
             >
               Photography
             </motion.p>
-
 
             {/* LOADING LINE */}
             <div className="relative z-10 w-40 h-[2px]

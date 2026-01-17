@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 
-/* =============================== 
+/* ================================ 
    VIDEO PLAYER WITH EMBED SUPPORT
 ================================ */
 function VideoPlayer({ video, onClose }) {
@@ -71,7 +71,7 @@ function VideoPlayer({ video, onClose }) {
   );
 }
 
-/* ===============================
+/* ================================
    VIDEO CARD WITH AUTO THUMBNAILS
 ================================ */
 function VideoCard({ video, onClick, categoryName }) {
@@ -126,7 +126,7 @@ function VideoCard({ video, onClick, categoryName }) {
   );
 }
 
-/* ===============================
+/* ================================
    VIDEOGRAPHY PAGE
 ================================ */
 export default function VideographyPage() {
@@ -139,7 +139,6 @@ export default function VideographyPage() {
   );
 
   const buttonsRef = useRef(null);
-  const videosRef = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -147,9 +146,19 @@ export default function VideographyPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // ✅ PERFECT: Auto-select FIRST category - ZERO warnings
   useEffect(() => {
-    // Fetch videography services from API
-    fetch("/api/services?type=videography")
+    if (!loading && dbCategories.length > 0 && !activeCategory?._id) {
+      setActiveCategory(dbCategories[0]);
+    }
+  }, [loading, dbCategories.length]);
+
+  useEffect(() => {
+    // ✅ CACHED FETCH for fast loading
+    fetch("/api/services?type=videography", {
+      cache: 'force-cache',
+      next: { revalidate: 3600 }
+    })
       .then((res) => res.json())
       .then((data) => {
         console.log("✅ Fetched services:", data);
@@ -168,12 +177,6 @@ export default function VideographyPage() {
 
   const handleToggle = (category) => {
     setActiveCategory(activeCategory?._id === category._id ? null : category);
-
-    setTimeout(() => {
-      if (activeCategory?._id !== category._id) {
-        videosRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }, 100);
   };
 
   const getGridColumns = () => {
@@ -206,6 +209,8 @@ export default function VideographyPage() {
           min-height: 100vh;
           background: linear-gradient(135deg, #e0f7fa 0%, #f3e5f5 100%);
           padding: 40px 16px 60px;
+          display: flex;
+          justify-content: center;
         }
 
         .videography-container {
@@ -215,11 +220,22 @@ export default function VideographyPage() {
         }
 
         .videography-title {
-          font-size: 2.5rem;
+          font-size: 3rem;
           text-align: center;
-          color: #111827;
-          margin: 0 0 24px;
-          font-weight: 800;
+          margin: 0 24px;
+          font-weight: 900;
+          background: linear-gradient(90deg, #ff0000 0%, #ff7f00 14%, #ffff00 28%, #00ff00 42%, #0000ff 57%, #4b0082 71%, #9400d3 85%, #ff0000 100%);
+          background-size: 200% auto;
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+          animation: rainbow 6s linear infinite;
+          filter: drop-shadow(0 4px 20px rgba(0,0,0,0.15));
+        }
+
+        @keyframes rainbow {
+          0% { background-position: 0% center; }
+          100% { background-position: 200% center; }
         }
 
         .category-buttons {
@@ -228,33 +244,35 @@ export default function VideographyPage() {
           justify-content: center;
           gap: 12px;
           margin: 0 auto 32px;
+          max-width: 1100px;
         }
 
         .category-button {
           padding: 10px 22px;
           font-size: 14px;
           font-weight: 600;
-          color: #374151;
-          background: #ffffff;
+          color: #1f2937;
+          background: #f9fafb;
           border: 1px solid #e5e7eb;
           border-radius: 999px;
           cursor: pointer;
           transition: all 0.2s ease;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
 
         .category-button:hover {
-          transform: translateY(-1px);
-          box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
-          border-color: #6366f1;
-          color: #4338ca;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(255,140,66,0.3);
+          background: #fc8332;
+          color: white;
+          border-color: #ffb380;
         }
 
         .category-button.active {
-          background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-          color: #ffffff;
-          border-color: #6366f1;
-          box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+          background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+          color: white;
+          border-color: #ff6b35;
+          box-shadow: 0 6px 20px rgba(255,107,53,0.5);
         }
 
         .video-card {
@@ -262,28 +280,53 @@ export default function VideographyPage() {
           display: flex;
           flex-direction: column;
           gap: 12px;
-          cursor: pointer;
-          transition: transform 0.2s ease;
+          padding: 0;
+          transform: translateZ(0);
+          will-change: transform;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          perspective: 1000px;
+          -webkit-perspective: 1000px;
         }
 
-        .video-card:hover {
-          transform: translateY(-4px);
-        }
-
-        .video-thumbnail {
+        .video-card .video-thumbnail {
           position: relative;
           width: 100%;
           aspect-ratio: 16 / 9;
           overflow: hidden;
           border-radius: 16px;
-          background: #000000;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          background: white;
+          cursor: pointer;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+          transform: translateZ(0);
+          transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                      box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          will-change: transform, box-shadow;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          contain: layout style paint;
+        }
+
+        .video-card:hover .video-thumbnail {
+          transform: translateY(-6px) translateZ(0);
+          box-shadow: 0 12px 24px rgba(0,0,0,0.15);
         }
 
         .video-thumbnail img {
           width: 100%;
           height: 100%;
           object-fit: cover;
+          transform: translateZ(0) scale(1);
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          will-change: transform;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: crisp-edges;
+        }
+
+        .video-card:hover .video-thumbnail img {
+          transform: scale(1.03) translateZ(0);
         }
 
         .play-overlay {
@@ -297,7 +340,7 @@ export default function VideographyPage() {
           justify-content: center;
           background: rgba(0, 0, 0, 0.3);
           opacity: 0;
-          transition: opacity 0.3s ease;
+          transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .video-card:hover .play-overlay {
@@ -314,7 +357,8 @@ export default function VideographyPage() {
           justify-content: center;
           font-size: 24px;
           color: #6366f1;
-          transition: transform 0.3s ease;
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
 
         .video-card:hover .play-button {
@@ -323,9 +367,13 @@ export default function VideographyPage() {
 
         .video-name {
           text-align: center;
-          font-size: 16px;
+          font-size: 17px;
           font-weight: 600;
           color: #000000;
+          padding: 4px 0;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          transition: none;
         }
 
         .thumbnail-skeleton {
@@ -334,73 +382,87 @@ export default function VideographyPage() {
           left: 0;
           width: 100%;
           height: 100%;
-          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-        }
-
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
+          background: #f0f0f0;
+          border-radius: 16px;
         }
 
         .video-modal {
           position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.95);
+          inset: 0;
+          background: rgba(0,0,0,0.98);
+          z-index: 999999;
           display: flex;
           align-items: center;
           justify-content: center;
-          z-index: 9999;
-          animation: fadeIn 0.3s ease;
+          animation: overlayFadeIn 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+          will-change: opacity;
         }
 
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
+        .video-modal.closing { 
+          animation: overlayFadeOut 0.4s cubic-bezier(0.55, 0.055, 0.675, 0.19); 
+        }
+
+        @keyframes overlayFadeIn { 
+          from { opacity: 0; } 
+          to { opacity: 1; } 
+        }
+        @keyframes overlayFadeOut { 
+          from { opacity: 1; } 
+          to { opacity: 0; } 
         }
 
         .video-modal-content {
           position: relative;
-          max-width: 90%;
-          max-height: 90%;
-          background: #000;
-          border-radius: 12px;
-          overflow: hidden;
-        }
-
-        .close-button {
-          position: absolute;
-          top: 20px;
-          right: 20px;
-          z-index: 10000;
-          background: rgba(220, 38, 38, 0.9);
-          border: none;
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          font-size: 24px;
-          color: white;
-          cursor: pointer;
+          width: 100%;
+          height: 100vh;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.3s ease;
+        }
+
+        .video-modal-content.closing {
+          animation: contentScaleOut 0.4s cubic-bezier(0.55, 0.055, 0.675, 0.19);
+        }
+
+        @keyframes contentScaleOut {
+          to { transform: scale(0.9); opacity: 0; }
+        }
+
+        .close-button {
+          position: fixed;
+          top: 30px;
+          right: 30px;
+          background: rgba(99, 102, 241, 0.9);
+          border: 2px solid rgba(255,255,255,0.4);
+          border-radius: 50%;
+          color: white;
+          cursor: pointer;
+          font-size: 24px;
+          font-weight: bold;
+          width: 60px;
+          height: 60px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          backdrop-filter: blur(20px);
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          z-index: 1000001;
+          box-shadow: 0 8px 32px rgba(99,102,241,0.3);
+          will-change: transform;
         }
 
         .close-button:hover {
-          background: rgba(220, 38, 38, 1);
-          transform: rotate(90deg) scale(1.1);
+          transform: scale(1.15);
+          box-shadow: 0 12px 40px rgba(99,102,241,0.5);
+          background: rgba(99,102,241,1);
         }
 
         .video-player {
-          width: 100%;
+          width: clamp(640px, 90vw, 1200px);
           height: 80vh;
-          display: block;
-          border: none;
+          max-height: 90vh;
+          border-radius: 20px;
+          box-shadow: 0 50px 150px rgba(0,0,0,0.6);
         }
 
         .loading-spinner {
@@ -419,19 +481,47 @@ export default function VideographyPage() {
           color: #9ca3af;
         }
 
+        @media (max-width: 1024px) {
+          .videography-title { font-size: 2.5rem; }
+        }
+
         @media (max-width: 768px) {
-          .videography-title {
-            font-size: 2rem;
+          .videography-title { font-size: 2rem; }
+          .close-button {
+            top: 15px;
+            right: 15px;
+            width: 44px;
+            height: 44px;
+            font-size: 22px;
           }
-
-          .video-modal-content {
-            max-width: 95%;
+          .video-player {
+            width: 95vw;
+            height: 75vh;
           }
+        }
 
-          .play-button {
-            width: 60px;
-            height: 60px;
+        @media (max-width: 480px) {
+          .videography-title { font-size: 1.75rem; }
+          .close-button {
+            top: 10px;
+            right: 10px;
+            width: 38px;
+            height: 38px;
             font-size: 20px;
+            border-width: 1.5px;
+          }
+          .video-player {
+            height: 70vh;
+          }
+        }
+
+        @media (max-width: 360px) {
+          .close-button {
+            top: 8px;
+            right: 8px;
+            width: 35px;
+            height: 35px;
+            font-size: 18px;
           }
         }
       `}</style>
@@ -455,7 +545,7 @@ export default function VideographyPage() {
           </div>
 
           {activeCategory && (
-            <div ref={videosRef} style={{ marginTop: "40px" }}>
+            <div style={{ marginTop: "40px" }}>
               {activeCategory.images && activeCategory.images.length > 0 ? (
                 <div style={gridStyle}>
                   {activeCategory.images.map((video, index) => (
@@ -496,7 +586,6 @@ export default function VideographyPage() {
                         <VideoCard
                           video={firstVideo}
                           onClick={(video) => {
-                            // ✅ FIXED: Separate handler for preview click
                             setSelectedVideo(video);
                           }}
                           categoryName={category.name}

@@ -28,9 +28,16 @@ export default function CustomerDetails({
   loading
 }) {
  
-  const filteredCustomers = customers.filter((c) => {
+  const filteredCustomers = customers
+  .filter((c) => {
     if (customerFilter === "All") return true
     return c.status === customerFilter
+  })
+  .slice()
+  .sort((a, b) => {
+    const dateA = a.date ? new Date(a.date) : new Date(0)
+    const dateB = b.date ? new Date(b.date) : new Date(0)
+    return dateB - dateA
   })
 
   const isMobile = typeof window !== 'undefined' ? window.innerWidth <= 768 : false
@@ -137,7 +144,7 @@ export default function CustomerDetails({
         </div>
       </div>
 
-      {/* Add/Edit Customer Form - Mobile: Full Width, Desktop: Above Table */}
+      {/* Add/Edit Customer Form */}
       {isAdding && (
         <div style={{
           background: "white",
@@ -153,7 +160,6 @@ export default function CustomerDetails({
           zIndex: isMobile ? "1000" : "auto",
           maxHeight: isMobile ? "80vh" : "auto",
           overflowY: isMobile ? "auto" : "visible",
-          transform: isMobile ? "translateY(100%)" : "none"
         }}>
           <h3 style={{
             fontSize: isMobile ? "16px" : "18px",
@@ -471,20 +477,17 @@ export default function CustomerDetails({
         </div>
       )}
 
-      {/* Customer List/Table */}
+      {/* Customer List - MOBILE: Cards, DESKTOP: Table */}
       {!isAdding && (
         <div style={{
-          background: "white",
-          borderRadius: "12px",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-          overflow: "hidden",
-          marginBottom: isMobile ? "100px" : "0" // Extra space for mobile form
+          marginBottom: isMobile ? "100px" : "0"
         }}>
           {filteredCustomers.length === 0 ? (
             <div style={{
               textAlign: "center",
               padding: isMobile ? "40px 16px" : "60px 20px",
               background: "#f9fafb",
+              borderRadius: "12px",
             }}>
               <p style={{ fontSize: isMobile ? "14px" : "16px", color: "#6b7280" }}>
                 {customerFilter === "All" 
@@ -492,249 +495,507 @@ export default function CustomerDetails({
                   : `No ${customerFilter.toLowerCase()} customers found.`}
               </p>
             </div>
-          ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{
-                width: "100%",
-                borderCollapse: "collapse",
-                minWidth: isMobile ? "700px" : "100%"
-              }}>
-                <thead>
-                  <tr style={{ background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
-                    <th style={{ padding: isMobile ? "12px 8px" : "14px 16px", textAlign: "left", fontSize: isMobile ? "11px" : "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      Name
-                    </th>
-                    <th style={{ padding: isMobile ? "12px 8px" : "14px 16px", textAlign: "left", fontSize: isMobile ? "11px" : "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      Date
-                    </th>
-                    <th style={{ padding: isMobile ? "12px 8px" : "14px 16px", textAlign: "right", fontSize: isMobile ? "11px" : "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      Total Amount
-                    </th>
-                    <th style={{ padding: isMobile ? "12px 8px" : "14px 16px", textAlign: "right", fontSize: isMobile ? "11px" : "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      Paid
-                    </th>
-                    <th style={{ padding: isMobile ? "12px 8px" : "14px 16px", textAlign: "right", fontSize: isMobile ? "11px" : "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      Due Amount
-                    </th>
-                    <th style={{ padding: isMobile ? "12px 8px" : "14px 16px", textAlign: "center", fontSize: isMobile ? "11px" : "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      Storage
-                    </th>
-                    <th style={{ padding: isMobile ? "12px 8px" : "14px 16px", textAlign: "center", fontSize: isMobile ? "11px" : "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredCustomers.map((customer, idx) => {
-                    const customerId = customer.id || customer._id
-                    const totalPaid = (customer.advances || []).reduce(
-                      (sum, adv) => sum + (Number(adv.amount) || 0),
-                      0
-                    )
+          ) : isMobile ? (
+            // MOBILE: Card View
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {filteredCustomers.map((customer) => {
+                const customerId = customer.id || customer._id
+                const totalPaid = (customer.advances || []).reduce(
+                  (sum, adv) => sum + (Number(adv.amount) || 0),
+                  0
+                )
 
-                    return (
-                      <React.Fragment key={customerId}>
-                        <tr style={{
-                          borderBottom: "1px solid #e5e7eb",
-                          transition: "background 0.2s",
-                        }}
-                        onMouseEnter={(e) => e.currentTarget.style.background = "#f9fafb"}
-                        onMouseLeave={(e) => e.currentTarget.style.background = "white"}
-                        >
-                          <td style={{ padding: isMobile ? "12px 8px" : "16px", fontSize: isMobile ? "13px" : "14px", fontWeight: "600", color: "#1f2937" }}>
-                            {customer.name}
-                          </td>
-                          <td style={{ padding: isMobile ? "12px 8px" : "16px", fontSize: "13px", color: "#6b7280" }}>
-                            {customer.date || "N/A"}
-                          </td>
-                          <td style={{ padding: isMobile ? "12px 8px" : "16px", fontSize: isMobile ? "13px" : "14px", fontWeight: "600", color: "#1f2937", textAlign: "right" }}>
+                return (
+                  <div
+                    key={customerId}
+                    style={{
+                      background: "white",
+                      borderRadius: "12px",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+                      overflow: "hidden",
+                      border: "1px solid #e5e7eb",
+                    }}
+                  >
+                    {/* Card Header */}
+                    <div style={{
+                      background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                      padding: "16px",
+                      color: "white",
+                    }}>
+                      <h3 style={{
+                        fontSize: "16px",
+                        fontWeight: "700",
+                        marginBottom: "4px",
+                      }}>
+                        {customer.name}
+                      </h3>
+                      <p style={{ fontSize: "12px", opacity: 0.9 }}>
+                        📅 {customer.date || "N/A"}
+                      </p>
+                    </div>
+
+                    {/* Card Body */}
+                    <div style={{ padding: "16px" }}>
+                      {/* Amount Details */}
+                      <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: "12px",
+                        marginBottom: "16px",
+                      }}>
+                        <div style={{
+                          background: "#f3f4f6",
+                          padding: "12px",
+                          borderRadius: "8px",
+                        }}>
+                          <p style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>
+                            Total Amount
+                          </p>
+                          <p style={{ fontSize: "16px", fontWeight: "700", color: "#1f2937" }}>
                             ₹{formatAmount(customer.totalAmount)}
-                          </td>
-                          <td style={{ padding: isMobile ? "12px 8px" : "16px", fontSize: isMobile ? "13px" : "14px", fontWeight: "600", color: "#10b981", textAlign: "right" }}>
+                          </p>
+                        </div>
+
+                        <div style={{
+                          background: "#dcfce7",
+                          padding: "12px",
+                          borderRadius: "8px",
+                        }}>
+                          <p style={{ fontSize: "11px", color: "#065f46", marginBottom: "4px" }}>
+                            Paid
+                          </p>
+                          <p style={{ fontSize: "16px", fontWeight: "700", color: "#10b981" }}>
                             ₹{formatAmount(totalPaid)}
-                          </td>
-                          <td style={{ padding: isMobile ? "12px 8px" : "16px", fontSize: isMobile ? "13px" : "14px", fontWeight: "600", color: "#ef4444", textAlign: "right" }}>
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Due Amount */}
+                      <div style={{
+                        background: "#fef3c7",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        marginBottom: "16px",
+                        border: "1px solid #fbbf24",
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: "12px", fontWeight: "600", color: "#92400e" }}>
+                            💰 Due Amount
+                          </span>
+                          <span style={{ fontSize: "18px", fontWeight: "800", color: "#92400e" }}>
                             ₹{formatAmount(customer.dueAmount)}
-                          </td>
-                          <td style={{ padding: isMobile ? "12px 8px" : "16px", textAlign: "center" }}>
-                            <span style={{
-                              padding: "6px 12px",
-                              borderRadius: "6px",
-                              fontSize: isMobile ? "10px" : "11px",
-                              fontWeight: "700",
-                              background: customer.hardDisk === "Hard Disk" ? "#dbeafe" : customer.hardDisk === "Pendrive" ? "#fecaca" : "#e0e7ff",
-                              color: customer.hardDisk === "Hard Disk" ? "#1e40af" : customer.hardDisk === "Pendrive" ? "#7f1d1d" : "#3730a3",
-                              whiteSpace: "nowrap",
-                              display: "inline-block"
-                            }}>
-                              {customer.hardDisk || "Hard Disk"} {customer.hardDisk !== "No Storage" && `- ₹${formatAmount(customer.hardDiskAmount)}`}
-                            </span>
-                          </td>
-                          <td style={{ padding: isMobile ? "12px 8px" : "16px", textAlign: "center" }}>
-                            <div style={{ display: "flex", gap: "6px", justifyContent: isMobile ? "center" : "center", flexWrap: "wrap" }}>
-                              <button
-                                onClick={() => {
-                                  setOpenPaymentRowId(openPaymentRowId === customerId ? null : customerId)
-                                  setOpenAdvanceId(null)
-                                }}
-                                style={{
-                                  padding: isMobile ? "6px 10px" : "6px 12px",
-                                  background: "#3b82f6",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: "6px",
-                                  fontSize: isMobile ? "10px" : "11px",
-                                  fontWeight: "600",
-                                  cursor: "pointer",
-                                  whiteSpace: "nowrap",
-                                  minWidth: isMobile ? "50px" : "auto"
-                                }}
-                              >
-                                {openPaymentRowId === customerId ? "Hide" : "View"}
-                              </button>
-                              <button
-                                onClick={() => {
-                                  handleEditCustomer(customer)
-                                  setIsAdding(true)
-                                }}
-                                style={{
-                                  padding: isMobile ? "6px 10px" : "6px 12px",
-                                  background: "#10b981",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: "6px",
-                                  fontSize: isMobile ? "10px" : "11px",
-                                  fontWeight: "600",
-                                  cursor: "pointer",
-                                  whiteSpace: "nowrap",
-                                  minWidth: isMobile ? "45px" : "auto"
-                                }}
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => handleDeleteCustomer(customerId)}
-                                disabled={loading}
-                                style={{
-                                  padding: isMobile ? "6px 10px" : "6px 12px",
-                                  background: "#ef4444",
-                                  color: "white",
-                                  border: "none",
-                                  borderRadius: "6px",
-                                  fontSize: isMobile ? "10px" : "11px",
-                                  fontWeight: "600",
-                                  cursor: loading ? "not-allowed" : "pointer",
-                                  opacity: loading ? 0.6 : 1,
-                                  whiteSpace: "nowrap",
-                                  minWidth: isMobile ? "55px" : "auto"
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
+                          </span>
+                        </div>
+                      </div>
 
-                        {/* Expandable Payment Details */}
-                        {openPaymentRowId === customerId && (
-                          <tr>
-                            <td colSpan={7} style={{ padding: 0, background: "#f9fafb" }}>
-                              <div style={{ padding: isMobile ? "16px" : "20px", borderTop: "2px solid #e5e7eb" }}>
-                                <h4 style={{ fontSize: isMobile ? "14px" : "15px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
-                                  💰 Payment Details
-                                </h4>
-                                
-                                {customer.advances && customer.advances.length > 0 ? (
-                                  <div style={{ display: "flex", flexDirection: isMobile ? "column" : "column", gap: "10px" }}>
-                                    {customer.advances.map((adv, advIdx) => (
-                                      <div
-                                        key={advIdx}
-                                        style={{
-                                          background: "white",
-                                          padding: isMobile ? "12px" : "14px",
-                                          borderRadius: "8px",
-                                          border: "1px solid #e5e7eb",
-                                          display: "grid",
-                                          gridTemplateColumns: isMobile ? "auto 1fr" : "auto 1fr auto auto",
-                                          gap: isMobile ? "12px" : "16px",
-                                          alignItems: "center",
-                                        }}
-                                      >
-                                        <div>
-                                          <span style={{
-                                            background: "#dbeafe",
-                                            color: "#1e40af",
-                                            padding: "6px 10px",
-                                            borderRadius: "6px",
-                                            fontSize: "12px",
-                                            fontWeight: "700",
-                                          }}>
-                                            Advance #{advIdx + 1}
-                                          </span>
-                                        </div>
-                                        <div style={{ display: isMobile ? "block" : "flex", gap: isMobile ? "8px" : "20px", marginTop: isMobile ? "8px" : "0" }}>
-                                          <div style={{ marginBottom: isMobile ? "8px" : "0" }}>
-                                            <p style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>Amount</p>
-                                            <p style={{ fontSize: "15px", fontWeight: "700", color: "#1f2937" }}>
-                                              ₹{formatAmount(adv.amount)}
-                                            </p>
-                                          </div>
-                                          <div style={{ marginBottom: isMobile ? "8px" : "0" }}>
-                                            <p style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>Date</p>
-                                            <p style={{ fontSize: "13px", fontWeight: "600", color: "#4b5563" }}>
-                                              {adv.date || "N/A"}
-                                            </p>
-                                          </div>
-                                          <div>
-                                            <p style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>Mode</p>
-                                            <p style={{ fontSize: "13px", fontWeight: "600", color: "#4b5563" }}>
-                                              {adv.paymentMode || "N/A"}
-                                            </p>
-                                          </div>
-                                        </div>
-                                      </div>
-                                    ))}
+                      {/* Storage Info */}
+                      <div style={{
+                        background: "#f3f4f6",
+                        padding: "12px",
+                        borderRadius: "8px",
+                        marginBottom: "16px",
+                      }}>
+                        <p style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>
+                          💾 Storage
+                        </p>
+                        <p style={{ fontSize: "13px", fontWeight: "600", color: "#1f2937" }}>
+                          {customer.hardDisk || "Hard Disk"} 
+                          {customer.hardDisk !== "No Storage" && ` - ₹${formatAmount(customer.hardDiskAmount)}`}
+                        </p>
+                      </div>
 
-                                    {/* Summary */}
-                                    <div style={{
-                                      background: "#dcfce7",
-                                      padding: "14px",
-                                      borderRadius: "8px",
-                                      border: "2px solid #10b981",
-                                      display: "flex",
-                                      justifyContent: "space-between",
-                                      alignItems: "center",
-                                    }}>
-                                      <span style={{ fontSize: "14px", fontWeight: "700", color: "#065f46" }}>
-                                        Total Paid
-                                      </span>
-                                      <span style={{ fontSize: "18px", fontWeight: "800", color: "#065f46" }}>
-                                        ₹{formatAmount(totalPaid)}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <div style={{
-                                    textAlign: "center",
-                                    padding: isMobile ? "24px 16px" : "30px",
-                                    background: "white",
+                      {/* Action Buttons */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "12px" }}>
+                        <button
+                          onClick={() => {
+                            setOpenPaymentRowId(openPaymentRowId === customerId ? null : customerId)
+                            setOpenAdvanceId(null)
+                          }}
+                          style={{
+                            padding: "10px",
+                            background: "#3b82f6",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {openPaymentRowId === customerId ? "Hide" : "View"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            handleEditCustomer(customer)
+                            setIsAdding(true)
+                          }}
+                          style={{
+                            padding: "10px",
+                            background: "#10b981",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCustomer(customerId)}
+                          disabled={loading}
+                          style={{
+                            padding: "10px",
+                            background: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            cursor: loading ? "not-allowed" : "pointer",
+                            opacity: loading ? 0.6 : 1,
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </div>
+
+                      {/* Expandable Payment Details */}
+                      {openPaymentRowId === customerId && (
+                        <div style={{
+                          borderTop: "2px solid #e5e7eb",
+                          paddingTop: "16px",
+                          marginTop: "12px",
+                        }}>
+                          <h4 style={{ fontSize: "14px", fontWeight: "700", color: "#1f2937", marginBottom: "12px" }}>
+                            💰 Payment Details
+                          </h4>
+                          
+                          {customer.advances && customer.advances.length > 0 ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                              {customer.advances.map((adv, advIdx) => (
+                                <div
+                                  key={advIdx}
+                                  style={{
+                                    background: "#f9fafb",
+                                    padding: "12px",
                                     borderRadius: "8px",
-                                    border: "1px dashed #d1d5db",
+                                    border: "1px solid #e5e7eb",
+                                  }}
+                                >
+                                  <div style={{
+                                    display: "flex",
+                                    justifyContent: "space-between",
+                                    alignItems: "center",
+                                    marginBottom: "8px",
                                   }}>
-                                    <p style={{ fontSize: "14px", color: "#9ca3af" }}>
-                                      No advance payments recorded yet.
-                                    </p>
+                                    <span style={{
+                                      background: "#dbeafe",
+                                      color: "#1e40af",
+                                      padding: "4px 8px",
+                                      borderRadius: "4px",
+                                      fontSize: "11px",
+                                      fontWeight: "700",
+                                    }}>
+                                      Advance #{advIdx + 1}
+                                    </span>
+                                    <span style={{ fontSize: "16px", fontWeight: "700", color: "#1f2937" }}>
+                                      ₹{formatAmount(adv.amount)}
+                                    </span>
                                   </div>
-                                )}
+                                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#6b7280" }}>
+                                    <span>📅 {adv.date || "N/A"}</span>
+                                    <span>💳 {adv.paymentMode || "N/A"}</span>
+                                  </div>
+                                </div>
+                              ))}
+
+                              {/* Total Summary */}
+                              <div style={{
+                                background: "#dcfce7",
+                                padding: "12px",
+                                borderRadius: "8px",
+                                border: "2px solid #10b981",
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}>
+                                <span style={{ fontSize: "13px", fontWeight: "700", color: "#065f46" }}>
+                                  Total Paid
+                                </span>
+                                <span style={{ fontSize: "18px", fontWeight: "800", color: "#065f46" }}>
+                                  ₹{formatAmount(totalPaid)}
+                                </span>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{
+                              textAlign: "center",
+                              padding: "20px",
+                              background: "#f9fafb",
+                              borderRadius: "8px",
+                              border: "1px dashed #d1d5db",
+                            }}>
+                              <p style={{ fontSize: "13px", color: "#9ca3af" }}>
+                                No advance payments recorded yet.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            // DESKTOP: Table View
+            <div style={{
+              background: "white",
+              borderRadius: "12px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              overflow: "hidden",
+            }}>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{
+                  width: "100%",
+                  borderCollapse: "collapse",
+                }}>
+                  <thead>
+                    <tr style={{ background: "#f9fafb", borderBottom: "2px solid #e5e7eb" }}>
+                      <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                        Name
+                      </th>
+                      <th style={{ padding: "14px 16px", textAlign: "left", fontSize: "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                        Date
+                      </th>
+                      <th style={{ padding: "14px 16px", textAlign: "right", fontSize: "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                        Total Amount
+                      </th>
+                      <th style={{ padding: "14px 16px", textAlign: "right", fontSize: "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                        Paid
+                      </th>
+                      <th style={{ padding: "14px 16px", textAlign: "right", fontSize: "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                        Due Amount
+                      </th>
+                      <th style={{ padding: "14px 16px", textAlign: "center", fontSize: "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                        Storage
+                      </th>
+                      <th style={{ padding: "14px 16px", textAlign: "center", fontSize: "12px", fontWeight: "700", color: "#4b5563", textTransform: "uppercase", whiteSpace: "nowrap" }}>
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredCustomers.map((customer) => {
+                      const customerId = customer.id || customer._id
+                      const totalPaid = (customer.advances || []).reduce(
+                        (sum, adv) => sum + (Number(adv.amount) || 0),
+                        0
+                      )
+
+                      return (
+                        <React.Fragment key={customerId}>
+                          <tr style={{
+                            borderBottom: "1px solid #e5e7eb",
+                            transition: "background 0.2s",
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.background = "#f9fafb"}
+                          onMouseLeave={(e) => e.currentTarget.style.background = "white"}
+                          >
+                            <td style={{ padding: "16px", fontSize: "14px", fontWeight: "600", color: "#1f2937" }}>
+                              {customer.name}
+                            </td>
+                            <td style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>
+                              {customer.date || "N/A"}
+                            </td>
+                            <td style={{ padding: "16px", fontSize: "14px", fontWeight: "600", color: "#1f2937", textAlign: "right" }}>
+                              ₹{formatAmount(customer.totalAmount)}
+                            </td>
+                            <td style={{ padding: "16px", fontSize: "14px", fontWeight: "600", color: "#10b981", textAlign: "right" }}>
+                              ₹{formatAmount(totalPaid)}
+                            </td>
+                            <td style={{ padding: "16px", fontSize: "14px", fontWeight: "600", color: "#ef4444", textAlign: "right" }}>
+                              ₹{formatAmount(customer.dueAmount)}
+                            </td>
+                            <td style={{ padding: "16px", textAlign: "center" }}>
+                              <span style={{
+                                padding: "6px 12px",
+                                borderRadius: "6px",
+                                fontSize: "11px",
+                                fontWeight: "700",
+                                background: customer.hardDisk === "Hard Disk" ? "#dbeafe" : customer.hardDisk === "Pendrive" ? "#fecaca" : "#e0e7ff",
+                                color: customer.hardDisk === "Hard Disk" ? "#1e40af" : customer.hardDisk === "Pendrive" ? "#7f1d1d" : "#3730a3",
+                                whiteSpace: "nowrap",
+                                display: "inline-block"
+                              }}>
+                                {customer.hardDisk || "Hard Disk"} {customer.hardDisk !== "No Storage" && `- ₹${formatAmount(customer.hardDiskAmount)}`}
+                              </span>
+                            </td>
+                            <td style={{ padding: "16px", textAlign: "center" }}>
+                              <div style={{ display: "flex", gap: "6px", justifyContent: "center", flexWrap: "wrap" }}>
+                                <button
+                                  onClick={() => {
+                                    setOpenPaymentRowId(openPaymentRowId === customerId ? null : customerId)
+                                    setOpenAdvanceId(null)
+                                  }}
+                                  style={{
+                                    padding: "6px 12px",
+                                    background: "#3b82f6",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    fontSize: "11px",
+                                    fontWeight: "600",
+                                    cursor: "pointer",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  {openPaymentRowId === customerId ? "Hide" : "View"}
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    handleEditCustomer(customer)
+                                    setIsAdding(true)
+                                  }}
+                                  style={{
+                                    padding: "6px 12px",
+                                    background: "#10b981",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    fontSize: "11px",
+                                    fontWeight: "600",
+                                    cursor: "pointer",
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCustomer(customerId)}
+                                  disabled={loading}
+                                  style={{
+                                    padding: "6px 12px",
+                                    background: "#ef4444",
+                                    color: "white",
+                                    border: "none",
+                                    borderRadius: "6px",
+                                    fontSize: "11px",
+                                    fontWeight: "600",
+                                    cursor: loading ? "not-allowed" : "pointer",
+                                    opacity: loading ? 0.6 : 1,
+                                    whiteSpace: "nowrap",
+                                  }}
+                                >
+                                  Delete
+                                </button>
                               </div>
                             </td>
                           </tr>
-                        )}
-                      </React.Fragment>
-                    )
-                  })}
-                </tbody>
-              </table>
+
+                          {/* Expandable Payment Details */}
+                          {openPaymentRowId === customerId && (
+                            <tr>
+                              <td colSpan={7} style={{ padding: 0, background: "#f9fafb" }}>
+                                <div style={{ padding: "20px", borderTop: "2px solid #e5e7eb" }}>
+                                  <h4 style={{ fontSize: "15px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
+                                    💰 Payment Details
+                                  </h4>
+                                  
+                                  {customer.advances && customer.advances.length > 0 ? (
+                                    <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                                      {customer.advances.map((adv, advIdx) => (
+                                        <div
+                                          key={advIdx}
+                                          style={{
+                                            background: "white",
+                                            padding: "14px",
+                                            borderRadius: "8px",
+                                            border: "1px solid #e5e7eb",
+                                            display: "grid",
+                                            gridTemplateColumns: "auto 1fr auto auto",
+                                            gap: "16px",
+                                            alignItems: "center",
+                                          }}
+                                        >
+                                          <div>
+                                            <span style={{
+                                              background: "#dbeafe",
+                                              color: "#1e40af",
+                                              padding: "6px 10px",
+                                              borderRadius: "6px",
+                                              fontSize: "12px",
+                                              fontWeight: "700",
+                                            }}>
+                                              Advance #{advIdx + 1}
+                                            </span>
+                                          </div>
+                                          <div style={{ display: "flex", gap: "20px" }}>
+                                            <div>
+                                              <p style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>Amount</p>
+                                              <p style={{ fontSize: "15px", fontWeight: "700", color: "#1f2937" }}>
+                                                ₹{formatAmount(adv.amount)}
+                                              </p>
+                                            </div>
+                                            <div>
+                                              <p style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>Date</p>
+                                              <p style={{ fontSize: "13px", fontWeight: "600", color: "#4b5563" }}>
+                                                {adv.date || "N/A"}
+                                              </p>
+                                            </div>
+                                            <div>
+                                              <p style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>Mode</p>
+                                              <p style={{ fontSize: "13px", fontWeight: "600", color: "#4b5563" }}>
+                                                {adv.paymentMode || "N/A"}
+                                              </p>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+
+                                      {/* Summary */}
+                                      <div style={{
+                                        background: "#dcfce7",
+                                        padding: "14px",
+                                        borderRadius: "8px",
+                                        border: "2px solid #10b981",
+                                        display: "flex",
+                                        justifyContent: "space-between",
+                                        alignItems: "center",
+                                      }}>
+                                        <span style={{ fontSize: "14px", fontWeight: "700", color: "#065f46" }}>
+                                          Total Paid
+                                        </span>
+                                        <span style={{ fontSize: "18px", fontWeight: "800", color: "#065f46" }}>
+                                          ₹{formatAmount(totalPaid)}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <div style={{
+                                      textAlign: "center",
+                                      padding: "30px",
+                                      background: "white",
+                                      borderRadius: "8px",
+                                      border: "1px dashed #d1d5db",
+                                    }}>
+                                      <p style={{ fontSize: "14px", color: "#9ca3af" }}>
+                                        No advance payments recorded yet.
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

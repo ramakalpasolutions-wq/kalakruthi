@@ -1,13 +1,13 @@
 'use client'
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { 
   MdDashboard, 
   MdViewCarousel, 
-  MdHomeRepairService, 
   MdPhotoLibrary, 
   MdMiscellaneousServices,
-  MdBusiness,        // ✅ B2B Icon
+  MdAttachMoney,
   MdRequestQuote,
+  MdBusiness,
   MdPeople,
   MdCardGiftcard,
   MdLogout,
@@ -18,23 +18,41 @@ import {
 const MENU = [
   { name: "Dashboard", icon: MdDashboard },
   { name: "Hero Section", icon: MdViewCarousel },
-  { name: "Home Services", icon: MdHomeRepairService },
   { name: "Gallery", icon: MdPhotoLibrary },
   { name: "Services", icon: MdMiscellaneousServices },
-  { name: "B2B Images", icon: MdBusiness },     // ✅ FIXED: Added B2B
+  { name: "Pricing List", icon: MdAttachMoney },
   { name: "Quotation", icon: MdRequestQuote },
+  { name: "B2B Customer", icon: MdBusiness },
   { name: "Customer Details", icon: MdPeople },
-  { name: "Packages", icon: MdCardGiftcard },   // ✅ FIXED: Removed duplicate
+  { name: "Packages", icon: MdCardGiftcard },
 ]
 
-export default function Sidebar({ active, setActive, sidebarOpen, setSidebarOpen, setOpenPaymentRowId, setOpenAdvanceId }) {
-  // ✅ SCROLL TO TOP FUNCTION
+export default function Sidebar({
+  active,
+  setActive,
+  setOpenPaymentRowId,
+  setOpenAdvanceId
+}) {
+  const [isDesktop, setIsDesktop] = useState(false)
+
+  // ✅ SEPARATE STATES
+  const [desktopOpen, setDesktopOpen] = useState(true)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  // ✅ DETECT DESKTOP
+  useEffect(() => {
+    const handleResize = () => {
+      setIsDesktop(window.innerWidth >= 1024)
+    }
+
+    handleResize()
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [])
+
   const scrollToTop = () => {
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
-  };
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const handleLogout = async () => {
     try {
@@ -47,130 +65,141 @@ export default function Sidebar({ active, setActive, sidebarOpen, setSidebarOpen
       localStorage.removeItem("adminuser")
       localStorage.removeItem("isAdmin")
       window.location.href = "/"
-    } catch (error) {
-      console.error("Logout error:", error)
+    } catch {
       window.location.href = "/"
     }
   }
 
-  const handleMenuClick = (menuName) => {
-    // ✅ SCROLL TO TOP + CLOSE SIDEBAR + RESET STATES
-    scrollToTop();
-    setActive(menuName);
-    setOpenPaymentRowId(null);
-    setOpenAdvanceId(null);
-    setSidebarOpen(false);
+  // ✅ TOGGLE BASED ON DEVICE
+  const toggleSidebar = () => {
+    if (isDesktop) {
+      setDesktopOpen(prev => !prev)
+    } else {
+      setMobileOpen(prev => !prev)
+    }
   }
+
+  const handleMenuClick = (menuName) => {
+    scrollToTop()
+    setActive(menuName)
+    setOpenPaymentRowId(null)
+    setOpenAdvanceId(null)
+
+    // close only on mobile
+    if (!isDesktop) {
+      setMobileOpen(false)
+    }
+  }
+
+  const isOpen = isDesktop ? desktopOpen : mobileOpen
 
   return (
     <>
-    
-      <button
-        onClick={() => setSidebarOpen(!sidebarOpen)}
-        style={{
-          position: "fixed",
-          top: "80px",
-          right: "20px",
-          zIndex: "1001",
-          background: "#10b981",
-          color: "black",
-          border: "none",
-          borderRadius: "8px",
-          padding: "10px 15px",
-          fontSize: "20px",
-          cursor: "pointer",
-          display: "none",
-        }}
-        className="mobile-menu-toggle"
-      >
-        {sidebarOpen ? "✕" : "☰"}
-      </button>
+      {/* MOBILE TOGGLE */}
+      {!isDesktop && (
+        <button
+          onClick={toggleSidebar}
+          style={{
+            position: "absolute",
+            top: "70px",
+            right: "20px",
+            zIndex: "1001",
+            background: "#10b981",
+            color: "black",
+            border: "none",
+            borderRadius: "80px",
+            padding: "5px 10px",
+            fontSize: "20px",
+            cursor: "pointer",
+          }}
+        >
+          {mobileOpen ? "✕" : "☰"}
+        </button>
+      )}
 
-      <aside className={`dashboard-sidebar ${sidebarOpen ? "sidebar-open" : "sidebar-closed"}`}>
+      {/* SIDEBAR */}
+      <aside className={`dashboard-sidebar ${isOpen ? "sidebar-open" : "sidebar-closed"}`}>
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          justifyContent: sidebarOpen ? 'space-between' : 'center',
-          padding: sidebarOpen ? '20px' : '20px 0',
+          justifyContent: isOpen ? 'space-between' : 'center',
+          padding: isOpen ? '20px' : '20px 0',
           marginBottom: '20px'
         }}>
-          {sidebarOpen && <h2 className="dashboard-logo" style={{ margin: 0 }}>Admin</h2>}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              background: "#10b981",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              padding: "8px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            className="desktop-sidebar-toggle"
-          >
-            {sidebarOpen ? <MdChevronLeft size={20} /> : <MdChevronRight size={20} />}
-          </button>
+          {isOpen && <h2 className="dashboard-logo">Admin</h2>}
+
+          {/* DESKTOP TOGGLE */}
+          {isDesktop && (
+            <button
+              onClick={toggleSidebar}
+              style={{
+                background: "#10b981",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                padding: "8px",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              {desktopOpen ? <MdChevronLeft size={20} /> : <MdChevronRight size={20} />}
+            </button>
+          )}
         </div>
 
-        {MENU.map((item) => {
-          const IconComponent = item.icon
+        {/* MENU */}
+        {MENU.map(item => {
+          const Icon = item.icon
           return (
             <button
               key={item.name}
-              onClick={() => handleMenuClick(item.name)}  // ✅ USE NEW FUNCTION
+              onClick={() => handleMenuClick(item.name)}
               className={`dashboard-menu-btn ${active === item.name ? "active" : ""}`}
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: sidebarOpen ? 'flex-start' : 'center',
-                padding: sidebarOpen ? '12px 20px' : '12px 0',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden'
+                justifyContent: isOpen ? 'flex-start' : 'center',
+                padding: isOpen ? '12px 20px' : '12px 0',
+                width: '100%',
               }}
-              title={!sidebarOpen ? item.name : ''}
+              title={!isOpen ? item.name : ''}
             >
-              <IconComponent size={30} style={{ flexShrink: 0 }} />
-              {sidebarOpen && <span style={{ marginLeft: '12px' }}>{item.name}</span>}
+              <Icon size={30} />
+              {isOpen && <span style={{ marginLeft: 12 }}>{item.name}</span>}
             </button>
           )
         })}
-        <button 
-          className="dashboard-logout" 
+
+        {/* LOGOUT */}
+        <button
           onClick={handleLogout}
+          className="dashboard-logout"
           style={{
             display: 'flex',
             alignItems: 'center',
-            justifyContent: sidebarOpen ? 'flex-start' : 'center',
-            padding: sidebarOpen ? '12px 20px' : '12px 0',
-            whiteSpace: 'nowrap',
-            overflow: 'hidden'
+            justifyContent: isOpen ? 'flex-start' : 'center',
+            padding: isOpen ? '12px 20px' : '12px 0',
+            width: '100%',
           }}
-          title={!sidebarOpen ? 'Logout' : ''}
         >
-          <MdLogout size={20} style={{ flexShrink: 0 }} />
-          {sidebarOpen && <span style={{ marginLeft: '12px' }}>Logout</span>}
+          <MdLogout size={20} />
+          {isOpen && <span style={{ marginLeft: 12 }}>Logout</span>}
         </button>
       </aside>
 
-      {sidebarOpen && (
+      {/* MOBILE OVERLAY */}
+      {!isDesktop && mobileOpen && (
         <div
-          onClick={() => setSidebarOpen(false)}
+          onClick={() => setMobileOpen(false)}
           style={{
             position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0, 0, 0, 0.5)",
-            zIndex: "999",
-            display: "none",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            zIndex: 999,
           }}
-          className="mobile-overlay"
         />
       )}
-      
     </>
   )
 }

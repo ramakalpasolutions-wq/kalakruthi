@@ -13,6 +13,9 @@ export default function ClientLayout({ children }) {
   const pathname = usePathname();
   const [loading, setLoading] = useState(false);
 
+  // Check if current path is admin panel
+  const isAdminPanel = pathname.startsWith('/admin');
+
   useEffect(() => {
     setLoading(true);
     const timer = setTimeout(() => {
@@ -26,15 +29,20 @@ export default function ClientLayout({ children }) {
       <Header />
       <Toaster position="top-right" />
       <GlobalLoader loading={loading} />
-      <a 
-        className="whatsapp-btn" 
-        href="https://wa.me/919876543210"
-        target="_blank"
-        rel="noopener noreferrer"
-        aria-label="Chat on WhatsApp"
-      >
-        <FaWhatsapp />
-      </a>
+      
+      {/* WhatsApp button - hidden on admin panel */}
+      {!isAdminPanel && (
+        <a 
+          className="whatsapp-btn" 
+          href="https://wa.me/919876543210"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Chat on WhatsApp"
+        >
+          <FaWhatsapp />
+        </a>
+      )}
+      
       <main>{children}</main>
       <Footer />
     </>

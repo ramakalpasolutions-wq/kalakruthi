@@ -1,6 +1,8 @@
 "use client"
 import React, { useState, useEffect, useCallback } from "react"
 import "./dashboard.css"
+import { requireAuth } from '@/lib/auth'
+
 // Import all components
 import HomeServices from './components/HomeServices'
 import Toast from './components/Toast'
@@ -14,9 +16,15 @@ import Gallery from './components/Gallery'
 import HeroSection from './components/HeroSection'
 import Services from './components/Services'
 import CustomerDetails from './components/CustomerDetails'
-import B2BImages from './components/B2BImages'
+import B2BCustomer from './components/B2BCustomer' // Changed from B2BImages to B2BCustomer
+import PricingList from './components/PricingList'
 
 export default function AdminDashboard() {
+  useEffect(() => {
+    requireAuth();
+  }, []);
+  const [quotationPricing, setQuotationPricing] = useState({})
+
   const [active, setActive] = useState("Dashboard")
   const [isAdding, setIsAdding] = useState(false)
   const [editingId, setEditingId] = useState(null)
@@ -25,7 +33,6 @@ export default function AdminDashboard() {
   const [newEventName, setNewEventName] = useState('')
   const [homeServices, setHomeServices] = useState([])
   const [activeTab, setActiveTab] = useState('photography')
-  const [b2bImages, setB2bImages] = useState([])
 
   // Hero Section State
   const [heroImages, setHeroImages] = useState([])
@@ -191,77 +198,7 @@ export default function AdminDashboard() {
     }
   }
 
-  // B2B Functions
-  const fetchB2bImages = async () => {
-    try {
-      const res = await fetch('/api/b2b-images')
-      const data = await res.json()
-      setB2bImages(Array.isArray(data) ? data : [])
-    } catch (error) {
-      console.error('Error fetching B2B images:', error)
-      showToast('Error loading B2B images', 'error')
-    }
-  }
-
-  const handleB2bUpload = async (e) => {
-    const files = Array.from(e.target.files)
-    if (files.length === 0) return
-
-    setLoading(true)
-    const formDataUpload = new FormData()
-    files.forEach((file) => formDataUpload.append("images", file))
-
-    try {
-      const response = await fetch("/api/b2b-images", {
-        method: "POST",
-        body: formDataUpload,
-      })
-
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Upload failed")
-      }
-
-      showToast(data.message || "B2B images uploaded successfully!", "success")
-      e.target.value = ""
-      await fetchB2bImages()
-    } catch (error) {
-      console.error("B2B upload error:", error)
-      showToast(`Upload failed: ${error.message}`, "error")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const deleteB2bImage = async (publicId) => {
-    if (!publicId || !confirm("Delete this B2B image?")) {
-      return
-    }
-
-    setLoading(true)
-    try {
-      const response = await fetch("/api/b2b-images", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ publicId }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || "Delete failed")
-      }
-
-      showToast("B2B image deleted successfully!", "success")
-      await fetchB2bImages()
-    } catch (error) {
-      console.error("Delete B2B error:", error)
-      showToast(`Delete failed: ${error.message}`, "error")
-    } finally {
-      setLoading(false)
-    }
-  }
+  
 
   // Customer Functions
   const handleTotalAmountChange = (value) => {
@@ -368,7 +305,6 @@ export default function AdminDashboard() {
       apiRequest("gallery"), 
       apiRequest("services"),
       apiRequest("home-services"),
-      apiRequest("b2b-images")
     ])
 
     const customersData = results[0].status === 'fulfilled' && Array.isArray(results[0].value) 
@@ -379,8 +315,6 @@ export default function AdminDashboard() {
       ? results[2].value : []
     const homeServicesData = results[3].status === 'fulfilled' && Array.isArray(results[3].value) 
       ? results[3].value : []
-    const b2bData = results[4].status === 'fulfilled' && Array.isArray(results[4].value) 
-      ? results[4].value : []
 
     const normalizedCustomers = customersData.map((c) => {
       const total = parseInt(c?.totalAmount) || 0
@@ -400,7 +334,6 @@ export default function AdminDashboard() {
     setGalleryMedia(Array.isArray(galleryData.media) ? galleryData.media : [])
     setServices(servicesData)
     setHomeServices(homeServicesData)
-    setB2bImages(b2bData)
   }, [apiRequest])
 
   useEffect(() => {
@@ -696,40 +629,38 @@ export default function AdminDashboard() {
     }
   }
 
- const deleteService = async (serviceId) => {
-  if (!serviceId) {
-    showToast("Service ID required", "error");
-    return;
-  }
-
-  if (!confirm("Are you sure you want to delete this service? This will also delete all images!")) {
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    // ✅ SEND ID IN QUERY PARAM (matches route.js)
-    const response = await fetch(`/api/services?id=${serviceId}`, {
-      method: "DELETE",
-    });
-
-    const result = await response.json();
-
-    if (!response.ok) {
-      throw new Error(result.error || "Failed to delete service");
+  const deleteService = async (serviceId) => {
+    if (!serviceId) {
+      showToast("Service ID required", "error");
+      return;
     }
 
-    showToast("Service deleted successfully!", "success");
-    await refreshData();
-  } catch (error) {
-    console.error("Delete service error:", error);
-    showToast(`Failed to delete: ${error.message}`, "error");
-  } finally {
-    setLoading(false);
-  }
-};
+    if (!confirm("Are you sure you want to delete this service? This will also delete all images!")) {
+      return;
+    }
 
+    try {
+      setLoading(true);
+
+      const response = await fetch(`/api/services?id=${serviceId}`, {
+        method: "DELETE",
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "Failed to delete service");
+      }
+
+      showToast("Service deleted successfully!", "success");
+      await refreshData();
+    } catch (error) {
+      console.error("Delete service error:", error);
+      showToast(`Failed to delete: ${error.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const deleteServiceImage = async (serviceId, imageId) => {
     if (!confirm("Delete this service image?")) return
@@ -778,89 +709,86 @@ export default function AdminDashboard() {
   }
 
   // ✅ VIDEO URL UPLOAD HANDLER
- // AFTER (✅ CORRECT):
-const handleVideoUrlUpload = async (serviceId, videoUrl, category) => {
-  try {
-    setLoading(true)
-    
-    console.log('📹 Uploading video URL:', { serviceId, videoUrl, category })  // ✅ Debug
-    
-    const response = await fetch('/api/services/video-url', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        serviceId: serviceId,
-        url: videoUrl,
-        category: category || 'videography'  // ✅ Ensure category is sent
-      }),
-    })
-
-    const result = await response.json()
-
-    if (!response.ok) {
-      throw new Error(result.error || 'Failed to add video URL')
-    }
-
-    showToast('Video URL added successfully!', 'success')
-    await refreshData()  // ✅ Refresh to get updated services
-  } catch (error) {
-    console.error('Error adding video URL:', error)
-    showToast('Error adding video URL: ' + error.message, 'error')
-  } finally {
-    setLoading(false)
-  }
-}
-
-
- const handleDirectUpload = async (serviceId, event, category = 'photography') => {
-  const files = Array.from(event.target.files)
-  
-  if (files.length === 0) return
-
-  const oversizedFiles = files.filter(
-    (file) => file.size / 1024 / 1024 > 15
-  )
-
-  if (oversizedFiles.length > 0) {
-    showToast(
-      `${oversizedFiles.length} file(s) exceed 15MB limit. Please compress them.`,
-      "error"
-    )
-    event.target.value = ""
-    return
-  }
-
-  setLoading(true)
-
-  try {
-    for (const file of files) {
-      const formDataImg = new FormData()
-      formDataImg.append("image", file)
-      formDataImg.append("category", category)  // ✅ ADD THIS
-
-      const response = await fetch(`/api/services/${serviceId}/upload`, {
-        method: "POST",
-        body: formDataImg,
+  const handleVideoUrlUpload = async (serviceId, videoUrl, category) => {
+    try {
+      setLoading(true)
+      
+      console.log('📹 Uploading video URL:', { serviceId, videoUrl, category })
+      
+      const response = await fetch('/api/services/video-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          serviceId: serviceId,
+          url: videoUrl,
+          category: category || 'videography'
+        }),
       })
 
       const result = await response.json()
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to upload image")
+        throw new Error(result.error || 'Failed to add video URL')
       }
+
+      showToast('Video URL added successfully!', 'success')
+      await refreshData()
+    } catch (error) {
+      console.error('Error adding video URL:', error)
+      showToast('Error adding video URL: ' + error.message, 'error')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDirectUpload = async (serviceId, event, category = 'photography') => {
+    const files = Array.from(event.target.files)
+    
+    if (files.length === 0) return
+
+    const oversizedFiles = files.filter(
+      (file) => file.size / 1024 / 1024 > 15
+    )
+
+    if (oversizedFiles.length > 0) {
+      showToast(
+        `${oversizedFiles.length} file(s) exceed 15MB limit. Please compress them.`,
+        "error"
+      )
+      event.target.value = ""
+      return
     }
 
-    showToast(`${files.length} file(s) uploaded successfully!`, "success")
-    await refreshData()
-  } catch (error) {
-    console.error("Upload error:", error)
-    showToast(`Upload failed: ${error.message}`, "error")
-  } finally {
-    setLoading(false)
-    event.target.value = ""
-  }
-}
+    setLoading(true)
 
+    try {
+      for (const file of files) {
+        const formDataImg = new FormData()
+        formDataImg.append("image", file)
+        formDataImg.append("category", category)
+
+        const response = await fetch(`/api/services/${serviceId}/upload`, {
+          method: "POST",
+          body: formDataImg,
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to upload image")
+        }
+      }
+
+      showToast(`${files.length} file(s) uploaded successfully!`, "success")
+      await refreshData()
+    } catch (error) {
+      console.error("Upload error:", error)
+      showToast(`Upload failed: ${error.message}`, "error")
+    } finally {
+      setLoading(false)
+      event.target.value = ""
+    }
+  }
 
   return (
     <div className="dashboard-container">
@@ -896,6 +824,7 @@ const handleVideoUrlUpload = async (serviceId, videoUrl, category) => {
           <Quotation
             quotation={quotation}
             setQuotation={setQuotation}
+              quotationPricing={quotationPricing}
             activeRequirementTab={activeRequirementTab}
             setActiveRequirementTab={setActiveRequirementTab}
             newEventName={newEventName}
@@ -904,6 +833,15 @@ const handleVideoUrlUpload = async (serviceId, videoUrl, category) => {
             setLoading={setLoading}
             showToast={showToast}
           />
+        )}
+
+        {/* ✅ ADDED: Pricing List Section */}
+        {active === "Pricing List" && (
+         <PricingList
+  quotationPricing={quotationPricing}
+  setQuotationPricing={setQuotationPricing}
+/>
+
         )}
 
         {active === "Gallery" && (
@@ -939,7 +877,7 @@ const handleVideoUrlUpload = async (serviceId, videoUrl, category) => {
             addService={addService}
             deleteService={deleteService}
             handleDirectUpload={handleDirectUpload}
-            handleVideoUrlUpload={handleVideoUrlUpload}  /* ✅ PROPERLY PASSED */
+            handleVideoUrlUpload={handleVideoUrlUpload}
             deleteServiceImage={deleteServiceImage}
             loading={loading}
             activeTab={activeTab}
@@ -958,9 +896,9 @@ const handleVideoUrlUpload = async (serviceId, videoUrl, category) => {
           />
         )}
 
-        {active === "B2B Images" && (
-          <B2BImages
-            b2bImages={b2bImages}
+        {active === "B2B Customer" && ( // Changed from "B2B Images" to "B2B Customer"
+          <B2BCustomer
+            // Removed b2bImages prop as we don't have B2B images anymore
             loading={loading}
             showToast={showToast}
             refreshData={refreshData}

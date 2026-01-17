@@ -118,7 +118,7 @@ export default function AdminLogin() {
                 onClick={() => setShowPassword(!showPassword)}
                 suppressHydrationWarning
               >
-                {showPassword ? <FaEyeSlash /> : <FaEye />}
+                {showPassword ? <FaEye /> : <FaEyeSlash />}
               </button>
             </div>
           </div>

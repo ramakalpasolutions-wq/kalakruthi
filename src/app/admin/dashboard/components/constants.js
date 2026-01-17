@@ -1,12 +1,9 @@
-export const MENU = [
-  "Dashboard",
-  "Packages",
-  "Quotation",
-  "Gallery",
-  "Hero Section",
-  "Services",
-  "Customer Details"
-]
+export const SERVICE_TO_CAMERA_MAP = {
+  "Traditional Photography": "Photo Camera",
+  "Traditional Videography": "Video Camera",
+  "Candid Photography": "Candid Photo",
+  "Candid Videography": "Candid Video",
+}
 
 export const SERVICES_BY_EVENT = {
   "Birthday": [
@@ -17,7 +14,6 @@ export const SERVICES_BY_EVENT = {
     { name: "Drone", amount: 8000 },
     { name: "Live Streaming", amount: 10000 },
     { name: "LED Walls", amount: 20000 },
-    // ... other services
   ],
   "Mature Function": [
     { name: "Traditional Photography", amount: 15000 },
@@ -27,7 +23,6 @@ export const SERVICES_BY_EVENT = {
     { name: "Drone", amount: 8000 },
     { name: "Live Streaming", amount: 10000 },
     { name: "LED Walls", amount: 20000 },
-    // ... other services
   ],
   "PrePost Wedding": [
     { name: "Traditional Photography", amount: 15000 },
@@ -37,17 +32,15 @@ export const SERVICES_BY_EVENT = {
     { name: "Drone", amount: 8000 },
     { name: "Live Streaming", amount: 10000 },
     { name: "LED Walls", amount: 20000 },
-    // ... other services
   ],
   "Engagement": [
-   { name: "Traditional Photography", amount: 15000 },
+    { name: "Traditional Photography", amount: 15000 },
     { name: "Traditional Videography", amount: 15000 },
     { name: "Candid Photography", amount: 12000 },
     { name: "Candid Videography", amount: 12000 },
     { name: "Drone", amount: 8000 },
     { name: "Live Streaming", amount: 10000 },
     { name: "LED Walls", amount: 20000 },
-    // ... other services
   ],
   "Marriage": [
     { name: "Traditional Photography", amount: 15000 },
@@ -57,7 +50,6 @@ export const SERVICES_BY_EVENT = {
     { name: "Drone", amount: 8000 },
     { name: "Live Streaming", amount: 10000 },
     { name: "LED Walls", amount: 20000 },
-    // ... other services
   ],
   "Reception": [
     { name: "Traditional Photography", amount: 15000 },
@@ -67,9 +59,36 @@ export const SERVICES_BY_EVENT = {
     { name: "Drone", amount: 8000 },
     { name: "Live Streaming", amount: 10000 },
     { name: "LED Walls", amount: 20000 },
-    // ... other services
   ],
-  
+  "Vratham": [
+    { name: "Traditional Photography", amount: 15000 },
+    { name: "Traditional Videography", amount: 15000 },
+    { name: "Candid Photography", amount: 12000 },
+    { name: "Candid Videography", amount: 12000 },
+    { name: "Drone", amount: 8000 },
+    { name: "Live Streaming", amount: 10000 },
+    { name: "LED Walls", amount: 20000 },
+  ],
+  "Formalties": [
+    { name: "Traditional Photography", amount: 15000 },
+    { name: "Traditional Videography", amount: 15000 },
+    { name: "Candid Photography", amount: 12000 },
+    { name: "Candid Videography", amount: 12000 },
+    { name: "Drone", amount: 8000 },
+    { name: "Live Streaming", amount: 10000 },
+    { name: "LED Walls", amount: 20000 },
+  ],
+  // ⭐⭐⭐ CRITICAL: ADD THIS "Other" CATEGORY FOR CUSTOM EVENTS ⭐⭐⭐
+  "Other": [
+    { name: "Traditional Photography", amount: 15000 },
+    { name: "Traditional Videography", amount: 15000 },
+    { name: "Candid Photography", amount: 12000 },
+    { name: "Candid Videography", amount: 12000 },
+    { name: "Drone", amount: 8000 },
+    { name: "Live Streaming", amount: 10000 },
+    { name: "LED Walls", amount: 20000 },
+    // You can add more default services here
+  ]
 }
 
 export const formatAmount = (amount) => {

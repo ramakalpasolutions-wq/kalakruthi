@@ -15,7 +15,11 @@ export default function Page() {
 
   const fetchHeroData = async () => {
     try {
-      const res = await fetch('/api/hero');
+      // ✅ CACHE ENABLED - Fast loading
+      const res = await fetch('/api/hero', { 
+        cache: 'force-cache',
+        next: { revalidate: 3600 } // Revalidate every hour
+      });
       
       if (!res.ok) {
         console.error('Failed to fetch hero data');
@@ -40,7 +44,11 @@ export default function Page() {
 
   const fetchHomeServices = async () => {
     try {
-      const response = await fetch('/api/home-services');
+      // ✅ CACHE ENABLED - Fast loading
+      const response = await fetch('/api/home-services', { 
+        cache: 'force-cache',
+        next: { revalidate: 3600 } // Revalidate every hour
+      });
       if (response.ok) {
         const data = await response.json();
         setHomeServices(data);
@@ -101,7 +109,7 @@ export default function Page() {
       >
         <div className="hero-overlay"></div>
 
-      
+        
         <div className="hero-content">
           <h1 className="hero-float">{heroTitle}</h1>
           <p className="hero-float delay">{heroSubtitle}</p>

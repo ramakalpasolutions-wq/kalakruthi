@@ -79,23 +79,6 @@ export default function About() {
           lenses, and drones—backed by professional maintenance and on‑time
           delivery for every shoot.
         </p>
-
-       <motion.button
-  whileHover={{ scale: 1.05 }}
-  whileTap={{ scale: 0.96 }}
-  className="rounded"
-  onClick={() => window.location.href = '/B2B'}
-  style={{ 
-    padding:"10px",
-    border: '2px dotted black', // ✅ Add this
-    backgroundColor: 'transparent', // Optional: if you want transparent background
-    color: '#000000' // Optional: text color matching border
-  }}
->
-  Enquire B2B Rentals
-</motion.button>
-
-
       </section>
     </div>
   );

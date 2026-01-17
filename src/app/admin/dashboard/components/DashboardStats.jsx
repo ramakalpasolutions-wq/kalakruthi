@@ -2,13 +2,11 @@
 import React, { useEffect, useRef } from 'react'
 import Chart from 'chart.js/auto'
 
-
 export default function DashboardStats({ customers, setActive, setCustomerFilter }) {
   const barChartRef = useRef(null)
   const donutChartRef = useRef(null)
   const barChartInstance = useRef(null)
   const donutChartInstance = useRef(null)
-
 
   const calculateDashboardTotals = () => {
     let totalRevenue = 0
@@ -33,9 +31,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
     }
   }
 
-
   const dashboardTotals = calculateDashboardTotals()
-
 
   // Bar Chart - Clean & Simple
   useEffect(() => {
@@ -46,6 +42,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
         barChartInstance.current.destroy()
       }
 
+      const isMobile = window.innerWidth < 640
 
       barChartInstance.current = new Chart(ctx, {
         type: 'bar',
@@ -54,7 +51,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
           datasets: [{
             data: [dashboardTotals.totalRevenue, dashboardTotals.totalPaid, dashboardTotals.totalDue],
             backgroundColor: ['#3b82f6', '#10b981', '#f59e0b'],
-            borderRadius: 6,
+            borderRadius: isMobile ? 4 : 6,
             borderSkipped: false,
           }]
         },
@@ -68,6 +65,9 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
               titleColor: 'white',
               bodyColor: 'white',
               cornerRadius: 8,
+              padding: isMobile ? 8 : 12,
+              titleFont: { size: isMobile ? 11 : 13 },
+              bodyFont: { size: isMobile ? 10 : 12 },
               callbacks: {
                 label: context => `₹${context.parsed.y.toLocaleString('en-IN')}`
               }
@@ -77,21 +77,32 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
             y: {
               beginAtZero: true,
               ticks: {
-                callback: value => `₹${(value/1000).toLocaleString()}K`,
-                color: '#6b7280'
+                callback: value => isMobile ? `₹${(value/1000)}K` : `₹${(value/1000).toLocaleString()}K`,
+                color: '#6b7280',
+                font: { size: isMobile ? 9 : 11 }
               },
               grid: { color: '#f3f4f6' }
             },
             x: {
-              ticks: { color: '#374151', font: { weight: '600' } },
+              ticks: { 
+                color: '#374151', 
+                font: { weight: '600', size: isMobile ? 9 : 11 },
+                maxRotation: 0,
+                minRotation: 0
+              },
               grid: { display: false }
             }
           }
         }
       })
     }
-  }, [dashboardTotals])
 
+    return () => {
+      if (barChartInstance.current) {
+        barChartInstance.current.destroy()
+      }
+    }
+  }, [dashboardTotals])
 
   // Donut Chart - Clean & Simple
   useEffect(() => {
@@ -102,6 +113,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
         donutChartInstance.current.destroy()
       }
 
+      const isMobile = window.innerWidth < 640
 
       donutChartInstance.current = new Chart(ctx, {
         type: 'doughnut',
@@ -111,7 +123,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
             data: [dashboardTotals.totalPaid, dashboardTotals.totalDue],
             backgroundColor: ['#10b981', '#f59e0b'],
             borderWidth: 0,
-            cutout: '65%'
+            cutout: isMobile ? '60%' : '65%'
           }]
         },
         options: {
@@ -121,10 +133,10 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
             legend: {
               position: 'bottom',
               labels: {
-                padding: 20,
+                padding: isMobile ? 12 : 20,
                 usePointStyle: true,
                 pointStyle: 'circle',
-                font: { size: 12, weight: '600' }
+                font: { size: isMobile ? 10 : 12, weight: '600' }
               }
             },
             tooltip: {
@@ -132,6 +144,9 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
               titleColor: 'white',
               bodyColor: 'white',
               cornerRadius: 8,
+              padding: isMobile ? 8 : 12,
+              titleFont: { size: isMobile ? 11 : 13 },
+              bodyFont: { size: isMobile ? 10 : 12 },
               callbacks: {
                 label: context => `₹${context.parsed.toLocaleString('en-IN')}`
               }
@@ -140,8 +155,13 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
         }
       })
     }
-  }, [dashboardTotals])
 
+    return () => {
+      if (donutChartInstance.current) {
+        donutChartInstance.current.destroy()
+      }
+    }
+  }, [dashboardTotals])
 
   return (
     <>
@@ -208,12 +228,26 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
           }
           
           .chart-card {
-            padding: 16px !important;
+            padding: 14px !important;
+          }
+          
+          .chart-card h3 {
+            font-size: 14px !important;
+          }
+          
+          .chart-card .icon {
+            font-size: 18px !important;
           }
           
           .chart-container {
-            height: 250px !important;
+            height: 220px !important;
           }
+        }
+
+        /* Ensure canvas sizing */
+        .chart-container canvas {
+          max-width: 100%;
+          height: auto !important;
         }
       `}</style>
 
@@ -262,7 +296,6 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
         />
       </div>
 
-
       {/* Charts Grid */}
       <div className="charts-grid">
         {/* Bar Chart Card */}
@@ -280,7 +313,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
             gap: '8px',
             marginBottom: '16px'
           }}>
-            <div style={{ fontSize: '20px' }}>📈</div>
+            <div className="icon" style={{ fontSize: '20px' }}>📈</div>
             <h3 style={{
               margin: 0,
               fontSize: '16px',
@@ -292,7 +325,6 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
             <canvas ref={barChartRef}></canvas>
           </div>
         </div>
-
 
         {/* Donut Chart Card */}
         <div className="chart-card" style={{
@@ -309,7 +341,7 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
             gap: '8px',
             marginBottom: '16px'
           }}>
-            <div style={{ fontSize: '20px' }}>🍩</div>
+            <div className="icon" style={{ fontSize: '20px' }}>🍩</div>
             <h3 style={{
               margin: 0,
               fontSize: '16px',
@@ -325,7 +357,6 @@ export default function DashboardStats({ customers, setActive, setCustomerFilter
     </>
   )
 }
-
 
 function StatCard({ icon, title, value, color, onClick, valueSize = "28px" }) {
   return (
@@ -351,7 +382,7 @@ function StatCard({ icon, title, value, color, onClick, valueSize = "28px" }) {
       }}
     >
       <div className="icon" style={{ fontSize: "24px", marginBottom: "8px" }}>{icon}</div>
-      <p style={{
+      <p className="title" style={{
         color: "#6b7280",
         fontSize: "11px",
         fontWeight: "600",

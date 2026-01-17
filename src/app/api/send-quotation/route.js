@@ -8,8 +8,10 @@ export async function POST(request) {
 
     const EMAIL_USER = process.env.EMAIL_USER
     const EMAIL_PASS = process.env.EMAIL_PASS
+    const OWNER_EMAIL = process.env.OWNER_EMAIL || EMAIL_USER // Owner email (defaults to EMAIL_USER)
 
     console.log('📧 EMAIL_USER:', EMAIL_USER ? '✓ Loaded' : '❌ Missing')
+    console.log('📧 OWNER_EMAIL:', OWNER_EMAIL ? '✓ Loaded' : '❌ Missing')
 
     if (!EMAIL_USER || !EMAIL_PASS) {
       return NextResponse.json(
@@ -19,31 +21,38 @@ export async function POST(request) {
     }
 
     const formData = await request.formData()
-    const pdf = formData.get('pdf')
-    const to = formData.get('to')
+    const pdfOwner = formData.get('pdfOwner')        // PDF WITH prices
+    const pdfCustomer = formData.get('pdfCustomer')  // PDF WITHOUT prices
+    const customerEmail = formData.get('customerEmail')
     const subject = formData.get('subject')
     const customerName = formData.get('customerName')
+    const eventType = formData.get('eventType')
 
-    if (!pdf || !to) {
+    if (!pdfOwner || !pdfCustomer || !customerEmail) {
       return NextResponse.json(
-        { error: 'Missing email or PDF' },
+        { error: 'Missing required files or email' },
         { status: 400 }
       )
     }
 
-    // Check PDF size
-    const buffer = await pdf.arrayBuffer()
-    const sizeMB = buffer.byteLength / (1024 * 1024)
-    console.log('📄 PDF size:', sizeMB.toFixed(2), 'MB')
+    // Check PDF sizes
+    const bufferOwner = await pdfOwner.arrayBuffer()
+    const bufferCustomer = await pdfCustomer.arrayBuffer()
+    const sizeOwnerMB = bufferOwner.byteLength / (1024 * 1024)
+    const sizeCustomerMB = bufferCustomer.byteLength / (1024 * 1024)
+    
+    console.log('📄 Owner PDF size:', sizeOwnerMB.toFixed(2), 'MB')
+    console.log('📄 Customer PDF size:', sizeCustomerMB.toFixed(2), 'MB')
 
-    if (sizeMB > 20) {
+    if (sizeOwnerMB > 20 || sizeCustomerMB > 20) {
       return NextResponse.json(
-        { error: `PDF too large (${sizeMB.toFixed(2)}MB). Max 20MB for Gmail.` },
+        { error: 'PDF too large. Max 20MB for Gmail.' },
         { status: 400 }
       )
     }
 
-    const attachmentBuffer = Buffer.from(buffer)
+    const attachmentOwner = Buffer.from(bufferOwner)
+    const attachmentCustomer = Buffer.from(bufferCustomer)
 
     const transporter = nodemailer.createTransport({
       service: 'gmail',
@@ -53,35 +62,91 @@ export async function POST(request) {
       },
     })
 
-    const info = await transporter.sendMail({
+    // 1️⃣ Send email to OWNER with prices
+    const ownerInfo = await transporter.sendMail({
       from: EMAIL_USER,
-      to,
-      subject: subject || 'Quotation from Kalakruthi Photography',
+      to: OWNER_EMAIL,
+      subject: `[NEW QUOTATION] ${subject || 'Quotation Request'}`,
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
-          <h2 style="color: #10b981;">Hello ${customerName || 'Customer'},</h2>
-          <p>Please find your quotation attached to this email.</p>
-          <p style="margin-top: 20px;">Thank you for choosing <strong>Kalakruthi Photography</strong>!</p>
+          <h2 style="color: #10b981;">📋 New Quotation Request</h2>
+          <p><strong>Customer:</strong> ${customerName || 'N/A'}</p>
+          <p><strong>Email:</strong> ${customerEmail}</p>
+          <p><strong>Event Type:</strong> ${eventType || 'N/A'}</p>
           <hr style="margin: 20px 0;">
-          <p style="font-size: 12px; color: #666;">
-            Best regards,<br>
-            <strong>Kalakruthi Photography</strong><br>
-            Professional Photography & Videography Services
+          <p style="font-size: 14px; color: #666;">
+            Find the full quotation with pricing details attached.
           </p>
         </div>
       `,
       attachments: [{
-        filename: `quotation_${customerName || 'invoice'}.pdf`,
-        content: attachmentBuffer,
+        filename: `quotation_${customerName || 'customer'}_with_prices.pdf`,
+        content: attachmentOwner,
         contentType: 'application/pdf',
       }],
     })
 
-    console.log('✅ Email sent:', info.messageId)
+    console.log('✅ Email sent to OWNER:', ownerInfo.messageId)
+
+    // 2️⃣ Send email to CUSTOMER without prices
+    const customerInfo = await transporter.sendMail({
+      from: EMAIL_USER,
+      to: customerEmail,
+      subject: subject || 'Quotation from Kalakruthi Photography',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px;">
+          <div style="background: white; padding: 30px; border-radius: 8px;">
+            <h2 style="color: #10b981; margin-bottom: 20px;">Hello ${customerName || 'Valued Customer'}! 📸</h2>
+            
+            <p style="font-size: 16px; line-height: 1.6; color: #333;">
+              Thank you for your interest in <strong>Kalakruthi Photography</strong>. We're excited to be a part of your special moments!
+            </p>
+            
+            <div style="background: #f0fdf4; padding: 20px; border-left: 4px solid #10b981; margin: 20px 0; border-radius: 4px;">
+              <p style="margin: 0; color: #065f46; font-size: 15px;">
+                <strong>📋 Your Quotation Details:</strong><br>
+                Event: ${eventType || 'N/A'}
+              </p>
+            </div>
+            
+            <p style="font-size: 15px; color: #555;">
+              Please find your personalized quotation attached to this email. If you have any questions or would like to discuss the details further, feel free to reach out to us!
+            </p>
+            
+            <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+            
+            <div style="text-align: center;">
+              <p style="font-size: 14px; color: #666; margin: 10px 0;">
+                <strong>Kalakruthi Photography</strong><br>
+                Professional Photography & Videography Services
+              </p>
+              <p style="font-size: 13px; color: #888;">
+                📞 Contact: +91-XXXXXXXXXX<br>
+                ✉️ Email: info@kalakruthi.com<br>
+                🌐 Website: www.kalakruthi.com
+              </p>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin-top: 20px; text-align: center;">
+              <p style="margin: 0; color: #92400e; font-size: 13px;">
+                💡 <strong>Tip:</strong> Book early to secure your preferred date!
+              </p>
+            </div>
+          </div>
+        </div>
+      `,
+      attachments: [{
+        filename: `quotation_${customerName || 'customer'}.pdf`,
+        content: attachmentCustomer,
+        contentType: 'application/pdf',
+      }],
+    })
+
+    console.log('✅ Email sent to CUSTOMER:', customerInfo.messageId)
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Email sent successfully!' 
+      message: 'Emails sent successfully to both owner and customer!' 
     })
 
   } catch (error) {

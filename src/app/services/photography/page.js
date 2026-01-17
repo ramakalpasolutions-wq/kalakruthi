@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, useTransition } from "react";
 
 const styles = {
   servicesGrid: {
@@ -23,15 +23,31 @@ function ImagePopupModal({ images, initialIndex, onClose, categoryName }) {
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [animationPhase, setAnimationPhase] = useState('idle');
   const autoPlayRef = useRef(null);
+  const [isPending, startTransition] = useTransition();
 
-  // 🔥 FIX: Early return if no images
+  // Cache images for fast loading
+  const preloadedImages = useMemo(() => {
+    const cache = new Map();
+    return images.map((img, index) => {
+      const key = img?.url || img?.secureUrl || `img-${index}`;
+      if (!cache.has(key)) {
+        cache.set(key, {
+          url: img?.url || img?.secureUrl || '',
+          secureUrl: img?.secureUrl || img?.url || '',
+          loaded: false
+        });
+      }
+      return cache.get(key);
+    });
+  }, [images]);
+
   if (!images || images.length === 0) {
     return (
       <div className={`image-popup-overlay ${isClosing ? "closing" : ""}`} onClick={onClose}>
         <div className="no-images-popup">
-          <button className="popup-close-btn" onClick={onClose}>✕</button>
-          <p style={{ fontSize: "64px", marginBottom: "20px" }}>📷</p>
-          <p style={{ fontSize: "24px", color: "white" }}>No images found</p>
+         <button className="popup-close-btn" onClick={onClose}>✕</button>
+         <p style={{ fontSize: "64px", marginBottom: "20px" }}>📷</p>
+         <p style={{ fontSize: "24px", color: "white" }}>No images found</p>
         </div>
       </div>
     );
@@ -50,12 +66,21 @@ function ImagePopupModal({ images, initialIndex, onClose, categoryName }) {
   const rightIndex = getImageIndex(1);
   const farRightIndex = getImageIndex(2);
 
-  const preloadedImages = useMemo(() => {
-    return images.map(img => ({
-      url: img?.url || img?.secureUrl || '',
-      secureUrl: img?.secureUrl || img?.url || ''
-    }));
-  }, [images]);
+  // Preload visible images
+  useEffect(() => {
+    const preloadImages = [farLeftIndex, leftIndex, centerIndex, rightIndex, farRightIndex];
+    preloadImages.forEach(index => {
+      const img = preloadedImages[index];
+      if (img && !img.loaded) {
+        const imageObj = new Image();
+        imageObj.src = img.url;
+        imageObj.onload = () => {
+          // Update cache - in real implementation you'd update state
+          console.log('Image preloaded:', img.url);
+        };
+      }
+    });
+  }, [currentIndex, preloadedImages]);
 
   useEffect(() => {
     if (images?.length > 1 && !isTransitioning) {
@@ -100,12 +125,14 @@ function ImagePopupModal({ images, initialIndex, onClose, categoryName }) {
     setAnimationPhase('next');
     setIsTransitioning(true);
     
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % images.length);
-      setAnimationPhase('idle');
-      setIsTransitioning(false);
-    }, 800);
-  }, [isTransitioning, images.length]);
+    startTransition(() => {
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev + 1) % images.length);
+        setAnimationPhase('idle');
+        setIsTransitioning(false);
+      }, 800);
+    });
+  }, [isTransitioning, images.length, startTransition]);
 
   const handlePrevious = useCallback(() => {
     if (isTransitioning) return;
@@ -113,12 +140,14 @@ function ImagePopupModal({ images, initialIndex, onClose, categoryName }) {
     setAnimationPhase('prev');
     setIsTransitioning(true);
     
-    setTimeout(() => {
-      setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
-      setAnimationPhase('idle');
-      setIsTransitioning(false);
-    }, 800);
-  }, [isTransitioning, images.length]);
+    startTransition(() => {
+      setTimeout(() => {
+        setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+        setAnimationPhase('idle');
+        setIsTransitioning(false);
+      }, 800);
+    });
+  }, [isTransitioning, images.length, startTransition]);
 
   const handleManualNext = useCallback(() => {
     if (autoPlayRef.current) clearInterval(autoPlayRef.current);
@@ -134,10 +163,10 @@ function ImagePopupModal({ images, initialIndex, onClose, categoryName }) {
     <div className={`image-popup-overlay ${isClosing ? "closing" : ""}`} onClick={handleClose}>
       <div className={`image-popup-content ${isClosing ? "closing" : ""}`} onClick={(e) => e.stopPropagation()}>
         <button className="popup-close-btn" onClick={handleClose}>✕</button>
-        <button className="popup-nav-btn prev-btn" onClick={handleManualPrevious} disabled={isTransitioning}>‹</button>
+        <button className="popup-nav-btn prev-btn" onClick={handleManualPrevious} disabled={isTransitioning || isPending}>‹</button>
         
         <div className="carousel-3d-container">
-          <div className={`carousel-3d-wrapper ${isTransitioning ? 'transitioning' : ''} ${animationPhase}`}>
+         <div className={`carousel-3d-wrapper ${isTransitioning ? 'transitioning' : ''} ${animationPhase}`}>
             {preloadedImages[farLeftIndex]?.url && (
               <div className="carousel-3d-item item-far-left" key={`far-left-${farLeftIndex}`}>
                 <img src={preloadedImages[farLeftIndex].url} alt="Far Left" loading="eager" />
@@ -170,7 +199,7 @@ function ImagePopupModal({ images, initialIndex, onClose, categoryName }) {
           </div>
         </div>
 
-        <button className="popup-nav-btn next-btn" onClick={handleManualNext} disabled={isTransitioning}>›</button>
+        <button className="popup-nav-btn next-btn" onClick={handleManualNext} disabled={isTransitioning || isPending}>›</button>
       </div>
     </div>
   );
@@ -178,18 +207,34 @@ function ImagePopupModal({ images, initialIndex, onClose, categoryName }) {
 
 function ServiceCard({ service, onView, showViewText = true }) {
   const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageCache] = useState(new Map());
+  const imageRef = useRef(null);
   const firstImage = service.images && service.images.length > 0 ? service.images[0] : null;
   const imageSrc = firstImage ? (firstImage.url || firstImage.secureUrl) : null;
 
   useEffect(() => {
     if (imageSrc) {
+      // Check cache first
+      if (imageCache.has(imageSrc)) {
+        setImageLoaded(imageCache.get(imageSrc));
+        return;
+      }
+
       const img = new Image();
       img.src = imageSrc;
-      img.onload = () => setImageLoaded(true);
+      img.onload = () => {
+        const loaded = true;
+        imageCache.set(imageSrc, loaded);
+        setImageLoaded(loaded);
+      };
+      img.onerror = () => {
+        imageCache.set(imageSrc, true);
+        setImageLoaded(true);
+      };
     } else {
       setImageLoaded(true);
     }
-  }, [imageSrc]);
+  }, [imageSrc, imageCache]);
 
   return (
     <div className="service-card">
@@ -197,6 +242,7 @@ function ServiceCard({ service, onView, showViewText = true }) {
         {imageSrc ? (
           <>
             <img
+              ref={imageRef}
               src={imageSrc}
               alt={service.name}
               style={{
@@ -222,6 +268,8 @@ export default function ServicesPage() {
   const [dbServices, setDbServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [windowWidth, setWindowWidth] = useState(typeof window !== "undefined" ? window.innerWidth : 1200);
+  const [imageCache] = useState(new Map());
+  const servicesCache = useRef(null);
 
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -230,24 +278,33 @@ export default function ServicesPage() {
   }, []);
 
   useEffect(() => {
-  fetch("/api/services?type=photography")  // ✅ ADD ?type=photography
-    .then((res) => res.json())
-    .then((data) => {
-      console.log("✅ Fetched photography services:", data);
-      // ✅ Filter ONLY photography (backup filter)
-      const photoServices = Array.isArray(data) 
-        ? data.filter(s => s.type === 'photography')
-        : [];
-      setDbServices(photoServices);
+    // Use cache if available
+    if (servicesCache.current) {
+      setDbServices(servicesCache.current);
       setLoading(false);
-    })
-    .catch((err) => {
-      console.error("❌ Error fetching services:", err);
-      setDbServices([]);
-      setLoading(false);
-    });
-}, []);
+      return;
+    }
 
+    fetch("/api/services?type=photography", { 
+      cache: "force-cache",
+      next: { revalidate: 3600 } // Cache for 1 hour
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("✅ Fetched photography services:", data);
+        const photoServices = Array.isArray(data) 
+          ? data.filter(s => s.type === 'photography')
+          : [];
+        servicesCache.current = photoServices;
+        setDbServices(photoServices);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("❌ Error fetching services:", err);
+        setDbServices([]);
+        setLoading(false);
+      });
+  }, []);
 
   const handleButtonClick = useCallback((service) => {
     setActivePopup(service);
@@ -359,13 +416,19 @@ export default function ServicesPage() {
           box-shadow: 0 6px 20px rgba(255,107,53,0.5);
         }
 
+        /* OPTIMIZED SMOOTH HOVER ANIMATIONS - NO LAG */
         .service-card {
           background: transparent;
           display: flex;
           flex-direction: column;
           gap: 12px;
+          padding: 0;
           transform: translateZ(0);
+          will-change: transform;
           backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          perspective: 1000px;
+          -webkit-perspective: 1000px;
         }
 
         .service-card .image-box {
@@ -373,32 +436,67 @@ export default function ServicesPage() {
           width: 100%;
           aspect-ratio: 1/1;
           overflow: hidden;
-          border-radius: 24px;
+          border-radius: 16px;
           background: white;
           cursor: pointer;
-          box-shadow: 0 12px 35px rgba(0,0,0,0.15);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.08);
           transform: translateZ(0);
-          transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
-          will-change: transform;
+          transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), 
+                      box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          will-change: transform, box-shadow;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          contain: layout style paint;
         }
 
         .service-card:hover .image-box {
-          transform: translateY(-12px) scale(1.03);
-          box-shadow: 0 35px 80px rgba(0,0,0,0.25);
-          border-radius: 28px;
+          transform: translateY(-6px) translateZ(0);
+          box-shadow: 0 12px 24px rgba(0,0,0,0.15);
         }
 
         .service-card .image-box img {
           width: 100%;
           height: 100%;
           object-fit: cover;
-          transform: translateZ(0);
-          transition: transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transform: translateZ(0) scale(1);
+          transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           will-change: transform;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: crisp-edges;
         }
 
         .service-card:hover .image-box img {
-          transform: scale(1.08) translateY(-2px);
+          transform: scale(1.03) translateZ(0);
+        }
+
+        /* TRANSPARENT VIEW BUTTON - COMPLETELY TRANSPARENT BOX */
+        .view-text {
+          position: absolute;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%) translateY(0);
+          font-size: 14px;
+          font-weight: 600;
+          color: white;
+          padding: 8px 24px;
+          border-radius: 4px;
+          opacity: 0;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          background: transparent; /* Completely transparent */
+          backdrop-filter: none;
+          border: 1px solid rgba(255, 255, 255, 0.7);
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+          pointer-events: none;
+          white-space: nowrap;
+          box-shadow: none;
+          letter-spacing: 0.5px;
+        }
+
+        .service-card:hover .view-text {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
         }
 
         .no-image-placeholder {
@@ -410,54 +508,36 @@ export default function ServicesPage() {
           justify-content: center;
           color: white;
           font-size: 48px;
+          transform: translateZ(0);
+          transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+        }
+
+        .service-card:hover .no-image-placeholder {
+          transform: scale(1.02) translateZ(0);
         }
 
         .image-skeleton {
           position: absolute;
           inset: 0;
-          background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-          background-size: 200% 100%;
-          animation: shimmer 1.5s infinite;
-          border-radius: 24px;
+          background: #f0f0f0;
+          border-radius: 16px;
         }
 
-        @keyframes shimmer {
-          0% { background-position: -200% 0; }
-          100% { background-position: 200% 0; }
-        }
-
-        .view-text {
-          position: absolute;
-          bottom: 20px;
-          left: 50%;
-          transform: translateX(-50%);
-          font-size: 14px;
-          font-weight: 600;
-          color: white;
-          padding: 8px 24px;
-          border-radius: 25px;
-          opacity: 0;
-          transition: all 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
-          backdrop-filter: blur(10px);
-          border: 2px solid rgba(255,255,255,0.9);
-          text-shadow: 0 1px 4px rgba(0,0,0,0.5);
-          pointer-events: none;
-        }
-
-        .image-box:hover .view-text {
-          opacity: 1;
-          transform: translateX(-50%) translateY(-8px);
-          background: rgba(255,255,255,0.15);
-        }
-
+        /* CATEGORY NAME - ALWAYS BLACK, NO COLOR CHANGE */
         .category-name {
           text-align: center;
-          font-size: 18px;
+          font-size: 17px;
           font-weight: 600;
-          color: #000;
+          color: #000000; /* Always black */
+          padding: 4px 0;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          transition: none; /* Remove any transition */
         }
 
-        /* 🔥 CAROUSEL */
+        /* CAROUSEL STYLES (UNCHANGED) */
         .image-popup-overlay {
           position: fixed;
           inset: 0;
@@ -636,7 +716,6 @@ export default function ServicesPage() {
           opacity: 0;
         }
 
-        /* 📱 ULTRA-COMPACT MOBILE BUTTONS */
         .popup-close-btn, .popup-nav-btn {
           position: fixed;
           background: rgba(99, 102, 241, 0.9);
@@ -695,7 +774,6 @@ export default function ServicesPage() {
           padding: 40px;
         }
 
-        /* 📱 TABLET */
         @media (max-width: 1024px) {
           .services-title { font-size: 2.5rem; }
           .carousel-3d-item { height: 80vh; }
@@ -721,9 +799,13 @@ export default function ServicesPage() {
 
           .prev-btn { left: 12px; }
           .next-btn { right: 12px; }
+          
+          .view-text {
+            padding: 6px 20px;
+            font-size: 13px;
+          }
         }
 
-        /* 📱 ULTRA-COMPACT MOBILE */
         @media (max-width: 480px) {
           .services-title { font-size: 1.75rem; }
           .carousel-3d-item { height: 70vh; }
@@ -746,9 +828,13 @@ export default function ServicesPage() {
 
           .prev-btn { left: 8px; }
           .next-btn { right: 8px; }
+          
+          .view-text {
+            padding: 5px 16px;
+            font-size: 12px;
+          }
         }
 
-        /* 📱 EXTRA SMALL SCREENS */
         @media (max-width: 360px) {
           .popup-close-btn {
             top: 8px;

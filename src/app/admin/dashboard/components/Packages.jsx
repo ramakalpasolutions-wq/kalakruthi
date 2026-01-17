@@ -252,7 +252,7 @@ export default function Packages() {
                 : "0 2px 8px rgba(0, 0, 0, 0.08)",
               border: pkg.featured
                 ? `2px solid ${pkg.color}`
-                : "1px solid #e5e7eb",
+                  : `2px solid ${pkg.color}80`,
               position: "relative",
               overflow: "hidden",
               display: "flex",
