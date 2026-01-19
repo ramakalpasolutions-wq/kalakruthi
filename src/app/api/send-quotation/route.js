@@ -64,7 +64,7 @@ export async function POST(request) {
 
     // 1️⃣ Send email to OWNER with prices
     const ownerInfo = await transporter.sendMail({
-      from: EMAIL_USER,
+      from: `Kalakruthi Photography <${EMAIL_USER}>`,
       to: OWNER_EMAIL,
       subject: `[NEW QUOTATION] ${subject || 'Quotation Request'}`,
       html: `
@@ -77,10 +77,13 @@ export async function POST(request) {
           <p style="font-size: 14px; color: #666;">
             Find the full quotation with pricing details attached.
           </p>
+          <p style="font-size: 12px; color: #999; margin-top: 20px;">
+            🕒 Sent at: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}
+          </p>
         </div>
       `,
       attachments: [{
-        filename: `quotation_${customerName || 'customer'}_with_prices.pdf`,
+        filename: `Quotation_${customerName?.replace(/\s+/g, '_') || 'customer'}_WITH_PRICES.pdf`,
         content: attachmentOwner,
         contentType: 'application/pdf',
       }],
@@ -90,7 +93,7 @@ export async function POST(request) {
 
     // 2️⃣ Send email to CUSTOMER without prices
     const customerInfo = await transporter.sendMail({
-      from: EMAIL_USER,
+      from: `Kalakruthi Photography <${EMAIL_USER}>`,
       to: customerEmail,
       subject: subject || 'Quotation from Kalakruthi Photography',
       html: `
@@ -122,7 +125,7 @@ export async function POST(request) {
               </p>
               <p style="font-size: 13px; color: #888;">
                 📞 Contact: +91-XXXXXXXXXX<br>
-                ✉️ Email: info@kalakruthi.com<br>
+                ✉️ Email: ${EMAIL_USER}<br>
                 🌐 Website: www.kalakruthi.com
               </p>
             </div>
@@ -132,11 +135,17 @@ export async function POST(request) {
                 💡 <strong>Tip:</strong> Book early to secure your preferred date!
               </p>
             </div>
+            
+            <div style="margin-top: 20px; text-align: center;">
+              <p style="font-size: 11px; color: #999;">
+                This is an automated email. Please do not reply directly to this message.
+              </p>
+            </div>
           </div>
         </div>
       `,
       attachments: [{
-        filename: `quotation_${customerName || 'customer'}.pdf`,
+        filename: `Quotation_${customerName?.replace(/\s+/g, '_') || 'customer'}.pdf`,
         content: attachmentCustomer,
         contentType: 'application/pdf',
       }],
@@ -146,7 +155,9 @@ export async function POST(request) {
 
     return NextResponse.json({ 
       success: true, 
-      message: 'Emails sent successfully to both owner and customer!' 
+      message: 'Emails sent successfully to both owner and customer!',
+      ownerMessageId: ownerInfo.messageId,
+      customerMessageId: customerInfo.messageId
     })
 
   } catch (error) {

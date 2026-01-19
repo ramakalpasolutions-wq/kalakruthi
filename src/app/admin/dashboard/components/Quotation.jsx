@@ -1,13 +1,12 @@
 'use client'
 import React, { useCallback, useRef, useState, useEffect } from 'react'
-//import { SERVICES_BY_EVENT } from './constants'
 import { generateQuotationPDF } from './QuotationPDF'
 import { SERVICES_BY_EVENT, SERVICE_TO_CAMERA_MAP } from './constants'
 
 export default function Quotation({ 
   quotation, 
   setQuotation, 
-    quotationPricing, 
+  quotationPricing, 
   activeRequirementTab, 
   setActiveRequirementTab,
   newEventName,
@@ -18,6 +17,30 @@ export default function Quotation({
 }) {
   const scrollRef = useRef(null)
   const [showCustomEventInput, setShowCustomEventInput] = useState(false)
+  
+  // ✅ Load equipment from PricingList API
+  const [equipmentList, setEquipmentList] = useState([])
+  const [loadingEquipment, setLoadingEquipment] = useState(true)
+
+  useEffect(() => {
+    loadEquipmentFromPricingList()
+  }, [])
+
+  const loadEquipmentFromPricingList = async () => {
+    try {
+      const response = await fetch('/api/quotation-pricing')
+      const data = await response.json()
+      if (data.items && data.items.length > 0) {
+        setEquipmentList(data.items)
+        console.log('✅ Loaded equipment:', data.items.length)
+      }
+    } catch (error) {
+      console.error('Failed to load equipment:', error)
+      showToast('Failed to load equipment list', 'error')
+    } finally {
+      setLoadingEquipment(false)
+    }
+  }
 
   const scrollToTop = useCallback(() => {
     scrollRef.current?.scrollIntoView({ 
@@ -31,51 +54,59 @@ export default function Quotation({
     return !Object.keys(SERVICES_BY_EVENT).includes(eventType)
   }
 
- const calculateQuotationTotal = () => {
-  let servicesTotal = 0
+  // ✅ UPDATED: Calculate total with ACTUAL PRICES included
+  const calculateQuotationTotal = () => {
+    let equipmentActualTotal = 0
+    let equipmentCustomerTotal = 0
 
-  // ✅ ONLY SERVICES
-  quotation.selectedEvents.forEach((eventType) => {
-    const eventServicesData =
-      SERVICES_BY_EVENT[eventType] || SERVICES_BY_EVENT["Other"] || []
+    // Calculate equipment totals (both actual and customer)
+    if (quotation.selectedEquipment) {
+      Object.keys(quotation.selectedEquipment).forEach(eventType => {
+        const eventEquipment = quotation.selectedEquipment[eventType] || []
+        eventEquipment.forEach(eq => {
+          if (eq.selected && eq.equipmentId && eq.equipmentId !== 'Not Selected') {
+            equipmentActualTotal += eq.actualPrice || 0
+            equipmentCustomerTotal += eq.customerPrice || 0
+          }
+        })
+      })
+    }
 
-    eventServicesData.forEach((service) => {
-      const serviceKey = `${eventType}-${service.name}`
-      if (quotation.eventServices?.[serviceKey]) {
-        const amount =
-          quotation.serviceAmounts?.[serviceKey] || service.amount
-        servicesTotal += amount
-      }
-    })
-  })
+    // ✅ SHEETS CALCULATION: Quantity × Price per sheet (both actual and customer)
+    const sheetsQuantity = parseInt(quotation.sheetsCount) || 0
+    const sheetsPricePerSheet = quotation.sheetsPricePerSheet || 0
+    const sheetsActualPricePerSheet = quotation.sheetsActualPricePerSheet || 0
+    const sheetsCustomerTotal = sheetsQuantity * sheetsPricePerSheet
+    const sheetsActualTotal = sheetsQuantity * sheetsActualPricePerSheet
 
-  // ✅ SHEETS SEPARATE
-  const sheetsTotal = parseInt(quotation.sheetsCustomerPrice) || 0
+    // ✅ Grand totals (actual + customer)
+    const actualGrandTotal = equipmentActualTotal + sheetsActualTotal
+    const customerGrandTotal = equipmentCustomerTotal + sheetsCustomerTotal
 
-  // ✅ DISCOUNT ONLY ON SERVICES
-  const discountPercent = parseFloat(quotation.discount) || 0
-  const discountAmount = Math.round(
-    (servicesTotal * discountPercent) / 100
-  )
+    // ✅ Discount on customer total only
+    const discountPercent = parseFloat(quotation.discount) || 0
+    const discountAmount = Math.round((customerGrandTotal * discountPercent) / 100)
 
-  // ✅ FINAL TOTAL
-  const finalTotal = servicesTotal - discountAmount + sheetsTotal
+    // Final customer total
+    const finalTotal = customerGrandTotal - discountAmount
 
-  const formatNumber = (num) =>
-    Math.round(num)
-      .toString()
-      .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+    const formatNumber = (num) =>
+      Math.round(num)
+        .toString()
+        .replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 
-  return {
-    servicesTotal: formatNumber(servicesTotal),
-    sheetsCustomerPrice: formatNumber(sheetsTotal),
-    discountAmount: formatNumber(discountAmount),
-    discountPercent,
-    total: formatNumber(finalTotal),
-    sheetsCount: Math.max(0, parseInt(quotation.sheetsCount) || 0),
+    return {
+      equipmentActualTotal: formatNumber(equipmentActualTotal),
+      equipmentTotal: formatNumber(equipmentCustomerTotal),
+      sheetsActualTotal: formatNumber(sheetsActualTotal),
+      sheetsTotal: formatNumber(sheetsCustomerTotal),
+      actualGrandTotal: formatNumber(actualGrandTotal),
+      grandTotal: formatNumber(customerGrandTotal),
+      discountAmount: formatNumber(discountAmount),
+      discountPercent,
+      total: formatNumber(finalTotal)
+    }
   }
-}
-
 
   const toggleEventSelection = (eventType) => {
     setQuotation((prev) => {
@@ -85,36 +116,35 @@ export default function Quotation({
         const newEventDates = { ...prev.eventDates }
         delete newEventDates[eventType]
         
-        const newEventServices = { ...prev.eventServices }
-        const newServiceAmounts = { ...prev.serviceAmounts }
-        
-        const servicesForEvent = SERVICES_BY_EVENT[eventType] || SERVICES_BY_EVENT["Other"] || []
-        servicesForEvent.forEach((service) => {
-         const key = `${eventType}-${service.name}`
-         delete newEventServices[key]
-         delete newServiceAmounts[key]
-        })
+        const newSelectedEquipment = { ...(prev.selectedEquipment || {}) }
+        delete newSelectedEquipment[eventType]
         
         return {
           ...prev,
           selectedEvents: prev.selectedEvents.filter((e) => e !== eventType),
           eventDates: newEventDates,
-          eventServices: newEventServices,
-          serviceAmounts: newServiceAmounts
+          selectedEquipment: newSelectedEquipment
         }
       } else {
-        // When adding a new event, DO NOT pre-select any services
-        const newEventServices = { ...prev.eventServices }
-        const newServiceAmounts = { ...prev.serviceAmounts }
+        const categories = [
+          'Traditional Photography',
+          'Traditional Videography',
+          'Candid Photography',
+          'Candid Videography',
+          'Drone',
+          'Live Streaming',
+          'LED Walls'
+        ]
         
-        const servicesForEvent = SERVICES_BY_EVENT[eventType] || SERVICES_BY_EVENT["Other"] || []
-        servicesForEvent.forEach((service) => {
-          const key = `${eventType}-${service.name}`
-          // Initialize as NOT selected (false) instead of true
-          newEventServices[key] = false
-          // Still store the default amount for reference
-          newServiceAmounts[key] = service.amount
-        })
+        const initialEquipment = categories.map((category, idx) => ({
+          id: `${eventType}-${idx}`,
+          category: category,
+          selected: false,
+          equipmentId: 'Not Selected',
+          timeSlot: 'Not Selected',
+          actualPrice: 0,
+          customerPrice: 0
+        }))
         
         return {
           ...prev,
@@ -123,8 +153,10 @@ export default function Quotation({
             ...prev.eventDates,
             [eventType]: { date: "", timeSlot: "" }
           },
-          eventServices: newEventServices,
-          serviceAmounts: newServiceAmounts
+          selectedEquipment: {
+            ...(prev.selectedEquipment || {}),
+            [eventType]: initialEquipment
+          }
         }
       }
     })
@@ -142,22 +174,14 @@ export default function Quotation({
       const newEventDates = { ...prev.eventDates }
       delete newEventDates[eventType]
       
-      const newEventServices = { ...prev.eventServices }
-      const newServiceAmounts = { ...prev.serviceAmounts }
-      
-      const servicesForEvent = SERVICES_BY_EVENT[eventType] || SERVICES_BY_EVENT["Other"] || []
-      servicesForEvent.forEach((service) => {
-        const key = `${eventType}-${service.name}`
-        delete newEventServices[key]
-        delete newServiceAmounts[key]
-      })
+      const newSelectedEquipment = { ...(prev.selectedEquipment || {}) }
+      delete newSelectedEquipment[eventType]
       
       return {
         ...prev,
         selectedEvents: prev.selectedEvents.filter((e) => e !== eventType),
         eventDates: newEventDates,
-        eventServices: newEventServices,
-        serviceAmounts: newServiceAmounts
+        selectedEquipment: newSelectedEquipment
       }
     })
     
@@ -184,18 +208,25 @@ export default function Quotation({
       return
     }
 
-    const baseServices = SERVICES_BY_EVENT["Other"] || []
-    const newEventServices = { ...quotation.eventServices }
-    const newServiceAmounts = { ...quotation.serviceAmounts }
-
-    // FIXED: Do NOT auto-select services for custom events
-    baseServices.forEach((service) => {
-      const key = `${trimmed}-${service.name}`
-      // Initialize as NOT selected (false)
-      newEventServices[key] = false
-      // Store the default amount for reference
-      newServiceAmounts[key] = service.amount
-    })
+    const categories = [
+      'Traditional Photography',
+      'Traditional Videography',
+      'Candid Photography',
+      'Candid Videography',
+      'Drone',
+      'Live Streaming',
+      'LED Walls'
+    ]
+    
+    const initialEquipment = categories.map((category, idx) => ({
+      id: `${trimmed}-${idx}`,
+      category: category,
+      selected: false,
+      equipmentId: 'Not Selected',
+      timeSlot: 'Not Selected',
+      actualPrice: 0,
+      customerPrice: 0
+    }))
 
     setQuotation((prev) => ({
       ...prev,
@@ -204,14 +235,253 @@ export default function Quotation({
         ...prev.eventDates,
         [trimmed]: { date: "", timeSlot: "" }
       },
-      eventServices: newEventServices,
-      serviceAmounts: newServiceAmounts
+      selectedEquipment: {
+        ...(prev.selectedEquipment || {}),
+        [trimmed]: initialEquipment
+      }
     }))
 
     scrollToTop()
     setActiveRequirementTab(trimmed)
     setNewEventName("")
     setShowCustomEventInput(false)
+  }
+
+  const toggleCategorySelection = (eventType, categoryIndex) => {
+    setQuotation(prev => {
+      const currentSelectedEquipment = prev.selectedEquipment || {}
+      const currentEventEquipment = currentSelectedEquipment[eventType] || []
+      
+      const updatedEquipment = currentEventEquipment.map((eq, idx) => {
+        if (idx === categoryIndex) {
+          return { 
+            ...eq, 
+            selected: !eq.selected,
+            equipmentId: !eq.selected ? eq.equipmentId : 'Not Selected',
+            timeSlot: !eq.selected ? eq.timeSlot : 'Not Selected',
+            actualPrice: !eq.selected ? eq.actualPrice : 0,
+            customerPrice: !eq.selected ? eq.customerPrice : 0
+          }
+        }
+        return eq
+      })
+
+      return {
+        ...prev,
+        selectedEquipment: {
+          ...currentSelectedEquipment,
+          [eventType]: updatedEquipment
+        }
+      }
+    })
+  }
+
+  const updateTimeSlot = (eventType, categoryIndex, timeSlot) => {
+    setQuotation(prev => {
+      const currentSelectedEquipment = prev.selectedEquipment || {}
+      const currentEventEquipment = currentSelectedEquipment[eventType] || []
+      
+      const updatedEquipment = currentEventEquipment.map((eq, idx) => {
+        if (idx === categoryIndex) {
+          const selectedItem = equipmentList.find(item => item.id === parseInt(eq.equipmentId))
+          
+          let actualPrice = eq.actualPrice
+          let customerPrice = eq.customerPrice
+          
+          if (selectedItem && timeSlot !== 'Not Selected') {
+            if (timeSlot === 'Half Day') {
+              actualPrice = selectedItem.actualPriceHalfDay || 0
+              customerPrice = selectedItem.customerPriceHalfDay || 0
+            } else if (timeSlot === 'Full Day') {
+              actualPrice = selectedItem.actualPriceFullDay || 0
+              customerPrice = selectedItem.customerPriceFullDay || 0
+            }
+          } else {
+            actualPrice = 0
+            customerPrice = 0
+          }
+          
+          return { 
+            ...eq, 
+            timeSlot,
+            actualPrice,
+            customerPrice
+          }
+        }
+        return eq
+      })
+
+      return {
+        ...prev,
+        selectedEquipment: {
+          ...currentSelectedEquipment,
+          [eventType]: updatedEquipment
+        }
+      }
+    })
+  }
+
+  const handleGlobalTimeSlotChange = (eventType, globalTimeSlot) => {
+    setQuotation(prev => {
+      const currentSelectedEquipment = prev.selectedEquipment || {}
+      const currentEventEquipment = currentSelectedEquipment[eventType] || []
+      
+      const updatedEquipment = currentEventEquipment.map(eq => {
+        const selectedItem = equipmentList.find(item => item.id === parseInt(eq.equipmentId))
+        
+        let actualPrice = eq.actualPrice
+        let customerPrice = eq.customerPrice
+        
+        if (selectedItem && globalTimeSlot !== '' && eq.equipmentId !== 'Not Selected') {
+          if (globalTimeSlot === 'Half Day') {
+            actualPrice = selectedItem.actualPriceHalfDay || 0
+            customerPrice = selectedItem.customerPriceHalfDay || 0
+          } else if (globalTimeSlot === 'Full Day') {
+            actualPrice = selectedItem.actualPriceFullDay || 0
+            customerPrice = selectedItem.customerPriceFullDay || 0
+          }
+        } else if (globalTimeSlot === '') {
+          actualPrice = 0
+          customerPrice = 0
+        }
+        
+        return {
+          ...eq,
+          timeSlot: globalTimeSlot || 'Not Selected',
+          actualPrice,
+          customerPrice
+        }
+      })
+
+      return {
+        ...prev,
+        eventDates: {
+          ...prev.eventDates,
+          [eventType]: {
+            ...prev.eventDates[eventType],
+            timeSlot: globalTimeSlot
+          }
+        },
+        selectedEquipment: {
+          ...currentSelectedEquipment,
+          [eventType]: updatedEquipment
+        }
+      }
+    })
+  }
+
+  const updateCameraModel = (eventType, categoryIndex, modelId) => {
+    const selectedItem = equipmentList.find(item => item.id === parseInt(modelId))
+    
+    setQuotation(prev => {
+      const currentSelectedEquipment = prev.selectedEquipment || {}
+      const currentEventEquipment = currentSelectedEquipment[eventType] || []
+      
+      const updatedEquipment = currentEventEquipment.map((eq, idx) => {
+        if (idx === categoryIndex) {
+          if (modelId === 'Not Selected') {
+            return { 
+              ...eq, 
+              equipmentId: 'Not Selected',
+              actualPrice: 0,
+              customerPrice: 0
+            }
+          } else if (selectedItem) {
+            const currentTimeSlot = eq.timeSlot || 'Not Selected'
+            let actualPrice = 0
+            let customerPrice = 0
+            
+            if (currentTimeSlot === 'Half Day') {
+              actualPrice = selectedItem.actualPriceHalfDay || 0
+              customerPrice = selectedItem.customerPriceHalfDay || 0
+            } else if (currentTimeSlot === 'Full Day') {
+              actualPrice = selectedItem.actualPriceFullDay || 0
+              customerPrice = selectedItem.customerPriceFullDay || 0
+            } else {
+              actualPrice = selectedItem.actualPriceHalfDay || 0
+              customerPrice = selectedItem.customerPriceHalfDay || 0
+            }
+            
+            return { 
+              ...eq, 
+              equipmentId: selectedItem.id,
+              actualPrice,
+              customerPrice
+            }
+          }
+        }
+        return eq
+      })
+
+      return {
+        ...prev,
+        selectedEquipment: {
+          ...currentSelectedEquipment,
+          [eventType]: updatedEquipment
+        }
+      }
+    })
+  }
+
+  const updateCustomerPrice = (eventType, categoryIndex, price) => {
+    setQuotation(prev => {
+      const currentSelectedEquipment = prev.selectedEquipment || {}
+      const currentEventEquipment = currentSelectedEquipment[eventType] || []
+      
+      const updatedEquipment = currentEventEquipment.map((eq, idx) => {
+        if (idx === categoryIndex) {
+          return { ...eq, customerPrice: parseInt(price) || 0 }
+        }
+        return eq
+      })
+
+      return {
+        ...prev,
+        selectedEquipment: {
+          ...currentSelectedEquipment,
+          [eventType]: updatedEquipment
+        }
+      }
+    })
+  }
+
+  const getCamerasForCategory = (category) => {
+    const categoryMap = {
+      'Traditional Photography': 'Camera',
+      'Traditional Videography': 'Camera',
+      'Candid Photography': 'Camera',
+      'Candid Videography': 'Camera',
+      'Drone': 'Drone',
+      'Live Streaming': 'Net Live',
+      'LED Walls': 'LED Wall'
+    }
+    
+    const equipmentCategory = categoryMap[category]
+    return equipmentList.filter(item => item.category === equipmentCategory)
+  }
+
+  const getSheetTypes = () => {
+    return equipmentList.filter(item => item.category === 'Sheets')
+  }
+
+  const handleSheetTypeChange = (sheetId) => {
+    const selectedSheet = equipmentList.find(item => item.id === parseInt(sheetId))
+    
+    if (selectedSheet) {
+      setQuotation({
+        ...quotation,
+        sheetsTypeId: selectedSheet.id,
+        sheetsPricePerSheet: selectedSheet.customerPriceHalfDay || 0,
+        sheetsActualPricePerSheet: selectedSheet.actualPriceHalfDay || 0
+      })
+    } else {
+      setQuotation({
+        ...quotation,
+        sheetsTypeId: null,
+        sheetsPricePerSheet: 0,
+        sheetsActualPricePerSheet: 0
+      })
+    }
   }
 
   const sendQuotationEmail = async () => {
@@ -275,7 +545,6 @@ export default function Quotation({
 
   const totals = calculateQuotationTotal()
 
-  // Event types in desired order with Vratham and Formalties next to Reception
   const eventTypes = [
     'Birthday',
     'Mature Function', 
@@ -287,38 +556,19 @@ export default function Quotation({
     'Formalties'
   ]
 
-  // Time slot options - only Half Day or Full Day
-  const timeSlots = [
-    "Half Day",
-    "Full Day"
-  ]
+  const timeSlots = ["Half Day", "Full Day"]
 
   return (
     <div ref={scrollRef}>
       <style>{`
         .quotation-container {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
+          max-width: 1400px;
+          margin: 0 auto;
+          display: flex;
+          flex-direction: column;
           gap: 20px;
-          align-items: start;
         }
 
-        .remove-event-btn {
-          background: #ef4444 !important;
-          color: white !important;
-          padding: 4px 8px !important;
-          font-size: 11px !important;
-          border-radius: 4px !important;
-          margin-left: 4px !important;
-          min-width: 24px !important;
-          height: 24px !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-        }
-        .remove-event-btn:hover {
-          background: #dc2626 !important;
-        }
         .cancel-event-btn {
           background: #f59e0b !important;
           color: white !important;
@@ -336,26 +586,24 @@ export default function Quotation({
           background: #d97706 !important;
         }
 
-        @media (max-width: 1024px) {
-          .quotation-container {
-            grid-template-columns: 1fr;
-            gap: 20px;
-          }
+        .requirement-row {
+          display: grid;
+          grid-template-columns: 30px 180px 200px 120px 120px 120px;
+          gap: 12px;
+          align-items: center;
+          padding: 12px 0;
+          border-bottom: 1px solid #f3f4f6;
         }
 
-        @media (max-width: 640px) {
-          .quotation-container {
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
-          }
-
-          .quotation-container > div:nth-child(2) {
-            order: 3 !important;
-          }
-
-          .quotation-container > div:first-child > div:last-child {
-            order: 2 !important;
-            margin-top: 12px !important;
+        @media (max-width: 768px) {
+          .requirement-row {
+            grid-template-columns: 1fr;
+            gap: 8px;
+            padding: 16px;
+            background: #f9fafb;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 12px;
           }
 
           .quotation-section {
@@ -378,136 +626,465 @@ export default function Quotation({
             font-size: 13px !important;
           }
 
-          .form-label {
-            font-size: 11px !important;
-            margin-bottom: 4px !important;
-          }
-
           .event-buttons-grid {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 8px !important;
-          }
-
-          .event-button {
-            padding: 10px !important;
-            font-size: 12px !important;
-          }
-
-          .custom-event-btn {
-            padding: 8px 12px !important;
-            font-size: 13px !important;
-          }
-
-          .event-tabs {
-            gap: 6px !important;
-            margin-bottom: 12px !important;
-          }
-
-          .event-tab-button {
-            padding: 8px 12px !important;
-            font-size: 12px !important;
-          }
-
-          .remove-event-btn, .cancel-event-btn {
-            padding: 2px 6px !important;
-            font-size: 10px !important;
-            min-width: 20px !important;
-            height: 20px !important;
-          }
-
-          .event-dates-display {
-            padding: 10px !important;
-            margin-bottom: 12px !important;
-          }
-
-          .date-input {
-            padding: 6px !important;
-            font-size: 12px !important;
-          }
-
-          /* 📸 Select Requirements – Mobile Fix */
-.requirements-list {
-  display: flex !important;
-  flex-direction: column !important;
-  gap: 12px !important;
-}
-
-.requirement-item select,
-.requirement-item input[type="number"] {
-  grid-column: 2 / -1 !important;
-  width: 100% !important;
-}
-
-.requirement-item select {
-  margin-bottom: 6px !important;
-}
-
-.requirement-label {
-  grid-column: 2 / -1 !important;
-}
-
-.requirement-input {
-  display: block !important;
-  width: 100% !important;
-  min-width: 120px !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-}
-
-
-          .totals-section {
-            padding: 16px !important;
-            gap: 8px !important;
-          }
-
-          .total-row {
-            font-size: 13px !important;
-          }
-
-          .total-value {
-            font-size: 14px !important;
-          }
-
-          .total-final {
-            fontSize: 16px !important;
-          }
-
-          .submit-button {
-            padding: 10px !important;
-            font-size: 13px !important;
-          }
-
-          .two-col-grid {
-            grid-template-columns: 1fr !important;
-            gap: 10px !important;
           }
         }
       `}</style>
 
       <div className="quotation-container">
-        <div>
-          {/* Customer Details Section */}
+        {/* Customer Details Section */}
+        <div className="quotation-section" style={{
+          background: "white",
+          padding: "24px",
+          borderRadius: "12px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+        }}>
+          <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
+            📋 Customer Details
+          </h3>
+          <div className="form-group" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+            <div>
+              <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                Name
+              </label>
+              <input
+                type="text"
+                value={quotation.firstName || ""}
+                onChange={(e) => setQuotation({ ...quotation, firstName: e.target.value })}
+                className="form-input"
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                📍 Location
+              </label>
+              <input
+                type="text"
+                placeholder="Enter event location"
+                value={quotation.location || ""}
+                onChange={(e) => setQuotation({ ...quotation, location: e.target.value })}
+                className="form-input"
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+
+            <div>
+              <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                value={quotation.customerPhone || ""}
+                onChange={(e) => setQuotation({ ...quotation, customerPhone: e.target.value })}
+                className="form-input"
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+            
+            <div>
+              <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={quotation.customerEmail || ""}
+                onChange={(e) => setQuotation({ ...quotation, customerEmail: e.target.value })}
+                className="form-input"
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Event Selection */}
+        <div className="quotation-section" style={{
+          background: "white",
+          padding: "24px",
+          borderRadius: "12px",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+        }}>
+          <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
+            🎉 Select Event Types
+          </h3>
+          <div className="event-buttons-grid" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px", marginBottom: "16px" }}>
+            {eventTypes.map((eventType) => (
+              <button
+                key={eventType}
+                onClick={() => toggleEventSelection(eventType)}
+                className="event-button"
+                style={{
+                  padding: "12px",
+                  border: quotation.selectedEvents.includes(eventType)
+                    ? "2px solid #10b981"
+                    : "1px solid #d1d5db",
+                  borderRadius: "8px",
+                  background: quotation.selectedEvents.includes(eventType) ? "#d1fae5" : "white",
+                  color: quotation.selectedEvents.includes(eventType) ? "#065f46" : "#4b5563",
+                  fontWeight: "600",
+                  fontSize: "13px",
+                  cursor: "pointer",
+                  transition: "all 0.2s",
+                }}
+              >
+                {quotation.selectedEvents.includes(eventType) ? "✓ " : ""}{eventType}
+              </button>
+            ))}
+          </div>
+          
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <button
+              onClick={() => setShowCustomEventInput(!showCustomEventInput)}
+              style={{
+                padding: "10px 20px",
+                background: "#10b981",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                fontWeight: "600",
+                fontSize: "14px",
+                cursor: "pointer",
+              }}
+            >
+              + Add Custom Event
+            </button>
+            {showCustomEventInput && (
+              <>
+                <input
+                  type="text"
+                  placeholder="Enter custom event name..."
+                  value={newEventName || ""}
+                  onChange={(e) => setNewEventName(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && handleAddCustomEvent()}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  }}
+                />
+                <button
+                  onClick={handleAddCustomEvent}
+                  style={{
+                    padding: "10px 16px",
+                    background: "#3b82f6",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontWeight: "600",
+                    cursor: "pointer",
+                  }}
+                >
+                  Add
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* SELECT REQUIREMENTS */}
+        {quotation.selectedEvents.length > 0 && (
           <div className="quotation-section" style={{
             background: "white",
             padding: "24px",
             borderRadius: "12px",
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            marginBottom: "20px",
           }}>
             <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
-              📋 Customer Details
+              📸 Select Requirements
             </h3>
-            <div className="form-group" style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
+            
+            <div className="event-tabs" style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+              {quotation.selectedEvents.map((eventType) => (
+                <div key={eventType} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  <button
+                    onClick={() => {
+                      scrollToTop()
+                      setActiveRequirementTab(eventType)
+                    }}
+                    className="event-tab-button"
+                    style={{
+                      padding: "10px 16px",
+                      background: activeRequirementTab === eventType ? "#10b981" : "#f3f4f6",
+                      color: activeRequirementTab === eventType ? "white" : "#4b5563",
+                      border: "none",
+                      borderRadius: "8px",
+                      fontWeight: "600",
+                      fontSize: "13px",
+                      cursor: "pointer",
+                      transition: "all 0.2s",
+                    }}
+                  >
+                    {eventType}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      cancelEvent(eventType)
+                    }}
+                    className="cancel-event-btn"
+                    title="Cancel this event"
+                  >
+                    ✕
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {activeRequirementTab && (
+              <>
+                {/* Event Date & Global Time Slot */}
+                <div className="event-dates-display" style={{
+                  background: "#f9fafb",
+                  padding: "12px",
+                  borderRadius: "8px",
+                  marginBottom: "16px",
+                  border: "1px solid #e5e7eb"
+                }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label className="form-label" style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" }}>
+                        📅 Event Date
+                      </label>
+                      <input
+                        type="date"
+                        value={quotation.eventDates[activeRequirementTab]?.date || ""}
+                        onChange={(e) =>
+                          setQuotation({
+                            ...quotation,
+                            eventDates: {
+                              ...quotation.eventDates,
+                              [activeRequirementTab]: {
+                                ...quotation.eventDates[activeRequirementTab],
+                                date: e.target.value,
+                              },
+                            },
+                          })
+                        }
+                        className="date-input"
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "1px solid #d1d5db",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                        }}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="form-label" style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" }}>
+                        ⏰ Apply Time Slot to All (Optional)
+                      </label>
+                      <select
+                        value={quotation.eventDates[activeRequirementTab]?.timeSlot || ""}
+                        onChange={(e) => handleGlobalTimeSlotChange(activeRequirementTab, e.target.value)}
+                        className="form-select"
+                        style={{
+                          width: "100%",
+                          padding: "8px",
+                          border: "2px solid #3b82f6",
+                          borderRadius: "6px",
+                          fontSize: "13px",
+                          background: "white",
+                          fontWeight: "600"
+                        }}
+                      >
+                        <option value="">Quick fill all...</option>
+                        {timeSlots.map((slot) => (
+                          <option key={slot} value={slot}>{slot}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Equipment List */}
+                <div style={{ marginBottom: "16px" }}>
+                  {loadingEquipment ? (
+                    <div style={{ textAlign: "center", padding: "20px", color: "#6b7280" }}>
+                      Loading equipment...
+                    </div>
+                  ) : (
+                    quotation.selectedEquipment?.[activeRequirementTab]?.map((equipment, idx) => {
+                      const availableCameras = getCamerasForCategory(equipment.category)
+                      
+                      return (
+                        <div key={idx} className="requirement-row">
+                          <input
+                            type="checkbox"
+                            checked={equipment.selected || false}
+                            onChange={() => toggleCategorySelection(activeRequirementTab, idx)}
+                            style={{
+                              width: "20px",
+                              height: "20px",
+                              cursor: "pointer",
+                              accentColor: "#10b981"
+                            }}
+                          />
+
+                          <div style={{ fontWeight: "600", fontSize: "14px", color: "#1f2937" }}>
+                            {equipment.category}
+                          </div>
+
+                          <select
+                            value={equipment.equipmentId || 'Not Selected'}
+                            disabled={!equipment.selected}
+                            onChange={(e) => updateCameraModel(activeRequirementTab, idx, e.target.value)}
+                            style={{
+                              padding: "10px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "6px",
+                              fontSize: "14px",
+                              background: equipment.selected ? "white" : "#f3f4f6",
+                              cursor: equipment.selected ? "pointer" : "not-allowed",
+                            }}
+                          >
+                            <option value="Not Selected">Not Selected</option>
+                            {availableCameras.map(camera => (
+                              <option key={camera.id} value={camera.id}>
+                                {camera.brand} {camera.model}
+                              </option>
+                            ))}
+                          </select>
+
+                          <select
+                            value={equipment.timeSlot || 'Not Selected'}
+                            disabled={!equipment.selected}
+                            onChange={(e) => updateTimeSlot(activeRequirementTab, idx, e.target.value)}
+                            style={{
+                              padding: "10px",
+                              border: "2px solid #3b82f6",
+                              borderRadius: "6px",
+                              fontSize: "14px",
+                              background: equipment.selected ? "white" : "#f3f4f6",
+                              cursor: equipment.selected ? "pointer" : "not-allowed",
+                              fontWeight: "600"
+                            }}
+                          >
+                            <option value="Not Selected">Not Selected</option>
+                            <option value="Half Day">Half Day</option>
+                            <option value="Full Day">Full Day</option>
+                          </select>
+
+                          <input
+                            type="number"
+                            value={equipment.actualPrice || 0}
+                            readOnly
+                            disabled
+                            style={{
+                              padding: "10px",
+                              border: "1px solid #d1d5db",
+                              borderRadius: "6px",
+                              fontSize: "14px",
+                              textAlign: "right",
+                              background: "#f3f4f6",
+                              color: "#6b7280",
+                              cursor: "not-allowed"
+                            }}
+                          />
+
+                          <input
+                            type="number"
+                            value={equipment.customerPrice || 0}
+                            disabled={!equipment.selected}
+                            onChange={(e) => updateCustomerPrice(activeRequirementTab, idx, e.target.value)}
+                            style={{
+                              padding: "10px",
+                              border: "2px solid #10b981",
+                              borderRadius: "6px",
+                              fontSize: "14px",
+                              textAlign: "right",
+                              background: equipment.selected ? "#d1fae5" : "#f3f4f6",
+                              fontWeight: "600"
+                            }}
+                          />
+                        </div>
+                      )
+                    })
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* SHEETS INFORMATION SECTION */}
+        {quotation.selectedEvents.length > 0 && (
+          <div className="quotation-section" style={{
+            background: "white",
+            padding: "24px",
+            borderRadius: "12px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          }}>
+            <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
+              📄 Sheets Information
+            </h3>
+            
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
               <div>
                 <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                  Name
+                  Sheet Type/Quality
+                </label>
+                <select
+                  value={quotation.sheetsTypeId || ''}
+                  onChange={(e) => handleSheetTypeChange(e.target.value)}
+                  className="form-select"
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                    background: "white"
+                  }}
+                >
+                  <option value="">Select Sheet Type</option>
+                  {getSheetTypes().map(sheet => (
+                    <option key={sheet.id} value={sheet.id}>
+                      {sheet.brand} - {sheet.model}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                  No. of Sheets
                 </label>
                 <input
-                  type="text"
-                  value={quotation.firstName}
-                  onChange={(e) => setQuotation({ ...quotation, firstName: e.target.value })}
+                  type="number"
+                  min="0"
+                  value={quotation.sheetsCount || 0}
+                  onChange={(e) => setQuotation({ ...quotation, sheetsCount: e.target.value })}
                   className="form-input"
                   style={{
                     width: "100%",
@@ -521,171 +1098,220 @@ export default function Quotation({
 
               <div>
                 <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                  📍 Location
+                  Price per Sheet (₹)
                 </label>
                 <input
-                  type="text"
-                  placeholder="Enter event location"
-                  value={quotation.location || ""}
-                  onChange={(e) => setQuotation({ ...quotation, location: e.target.value })}
+                  type="number"
+                  value={quotation.sheetsPricePerSheet || 0}
+                  onChange={(e) => setQuotation({ ...quotation, sheetsPricePerSheet: parseInt(e.target.value) || 0 })}
                   className="form-input"
                   style={{
                     width: "100%",
                     padding: "10px",
-                    border: "1px solid #d1d5db",
+                    border: "2px solid #10b981",
                     borderRadius: "6px",
                     fontSize: "14px",
-                  }}
-                />
-              </div>
-
-              <div>
-                <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  value={quotation.customerPhone}
-                  onChange={(e) => setQuotation({ ...quotation, customerPhone: e.target.value })}
-                  className="form-input"
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontSize: "14px",
-                  }}
-                />
-              </div>
-              
-              <div>
-                <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={quotation.customerEmail}
-                  onChange={(e) => setQuotation({ ...quotation, customerEmail: e.target.value })}
-                  className="form-input"
-                  style={{
-                    width: "100%",
-                    padding: "10px",
-                    border: "1px solid #d1d5db",
-                    borderRadius: "6px",
-                    fontSize: "14px",
+                    background: "#d1fae5",
+                    fontWeight: "600"
                   }}
                 />
               </div>
             </div>
           </div>
+        )}
 
-          {/* Event Selection - Now includes Vratham & Formalties next to Reception */}
+        {/* ✅ UPDATED: QUOTATION SUMMARY WITH ACTUAL PRICES */}
+        {quotation.selectedEvents.length > 0 && (
           <div className="quotation-section" style={{
             background: "white",
             padding: "24px",
             borderRadius: "12px",
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-            marginBottom: "20px",
           }}>
             <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
-              🎉 Select Event Types
+              💰 Quotation Summary
             </h3>
-            <div className="event-buttons-grid" style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px", marginBottom: "16px" }}>
-              {eventTypes.map((eventType) => (
-                <button
-                  key={eventType}
-                  onClick={() => toggleEventSelection(eventType)}
-                  className="event-button"
-                  style={{
-                    padding: "12px",
-                    border: quotation.selectedEvents.includes(eventType)
-                      ? "2px solid #10b981"
-                      : "1px solid #d1d5db",
-                    borderRadius: "8px",
-                    background: quotation.selectedEvents.includes(eventType) ? "#d1fae5" : "white",
-                    color: quotation.selectedEvents.includes(eventType) ? "#065f46" : "#4b5563",
-                    fontWeight: "600",
-                    fontSize: "13px",
-                    cursor: "pointer",
-                    transition: "all 0.2s",
-                  }}
-                >
-                  {quotation.selectedEvents.includes(eventType) ? "✓ " : ""}{eventType}
-                </button>
-              ))}
-            </div>
-            
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <button
-                onClick={() => setShowCustomEventInput(!showCustomEventInput)}
+
+            <div style={{ marginBottom: "20px" }}>
+              <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                Discount (%)
+              </label>
+              <input
+                type="number"
+                min="0"
+                max="100"
+                value={quotation.discount || ''}
+                onChange={(e) => setQuotation({ ...quotation, discount: e.target.value })}
+                className="form-input"
                 style={{
-                  padding: "10px 20px",
+                  width: "100%",
+                  maxWidth: "200px",
+                  padding: "10px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "14px",
+                }}
+              />
+            </div>
+
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "1fr 1fr", 
+              gap: "20px",
+              marginBottom: "16px" 
+            }}>
+              {/* LEFT COLUMN - ACTUAL PRICES */}
+              <div style={{ 
+                background: "#fef2f2", 
+                padding: "16px", 
+                borderRadius: "8px",
+                border: "2px solid #fecaca"
+              }}>
+                <h4 style={{ 
+                  fontSize: "14px", 
+                  fontWeight: "700", 
+                  color: "#dc2626", 
+                  marginBottom: "12px",
+                  borderBottom: "2px solid #dc2626",
+                  paddingBottom: "6px"
+                }}>
+                  📊 Owner View (Actual Prices)
+                </h4>
+                
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                  <span style={{ fontSize: "13px", color: "#4b5563" }}>Equipment Total:</span>
+                  <span style={{ fontSize: "13px", fontWeight: "600", color: "#dc2626" }}>
+                    ₹{totals.equipmentActualTotal || "0"}
+                  </span>
+                </div>
+                
+                {parseInt(quotation.sheetsCount) > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                    <span style={{ fontSize: "13px", color: "#4b5563" }}>Sheets Total:</span>
+                    <span style={{ fontSize: "13px", fontWeight: "600", color: "#dc2626" }}>
+                      ₹{totals.sheetsActualTotal || "0"}
+                    </span>
+                  </div>
+                )}
+                
+                <div style={{ borderTop: "1px solid #fecaca", margin: "8px 0" }}></div>
+                
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                  <span style={{ fontSize: "14px", fontWeight: "700", color: "#991b1b" }}>
+                    Grand Total (Actual):
+                  </span>
+                  <span style={{ fontSize: "16px", fontWeight: "700", color: "#dc2626" }}>
+                    ₹{totals.actualGrandTotal || "0"}
+                  </span>
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN - CUSTOMER PRICES */}
+              <div style={{ 
+                background: "#f0fdf4", 
+                padding: "16px", 
+                borderRadius: "8px",
+                border: "2px solid #86efac"
+              }}>
+                <h4 style={{ 
+                  fontSize: "14px", 
+                  fontWeight: "700", 
+                  color: "#16a34a", 
+                  marginBottom: "12px",
+                  borderBottom: "2px solid #16a34a",
+                  paddingBottom: "6px"
+                }}>
+                  👤 Customer View (Customer Prices)
+                </h4>
+                
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                  <span style={{ fontSize: "13px", color: "#4b5563" }}>Equipment Total:</span>
+                  <span style={{ fontSize: "13px", fontWeight: "600", color: "#16a34a" }}>
+                    ₹{totals.equipmentTotal}
+                  </span>
+                </div>
+                
+                {parseInt(quotation.sheetsCount) > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                    <span style={{ fontSize: "13px", color: "#4b5563" }}>Sheets Total:</span>
+                    <span style={{ fontSize: "13px", fontWeight: "600", color: "#16a34a" }}>
+                      ₹{totals.sheetsTotal}
+                    </span>
+                  </div>
+                )}
+                
+                <div style={{ borderTop: "1px solid #86efac", margin: "8px 0" }}></div>
+                
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                  <span style={{ fontSize: "13px", color: "#4b5563" }}>Subtotal:</span>
+                  <span style={{ fontSize: "13px", fontWeight: "600", color: "#16a34a" }}>
+                    ₹{totals.grandTotal}
+                  </span>
+                </div>
+                
+                {parseFloat(quotation.discount) > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                    <span style={{ fontSize: "13px", color: "#dc2626" }}>
+                      Discount ({quotation.discount}%):
+                    </span>
+                    <span style={{ fontSize: "13px", fontWeight: "600", color: "#dc2626" }}>
+                      -₹{totals.discountAmount}
+                    </span>
+                  </div>
+                )}
+                
+                <div style={{ borderTop: "2px solid #16a34a", margin: "8px 0" }}></div>
+                
+                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                  <span style={{ fontSize: "15px", fontWeight: "700", color: "#065f46" }}>
+                    Final Amount:
+                  </span>
+                  <span style={{ fontSize: "18px", fontWeight: "700", color: "#16a34a" }}>
+                    ₹{totals.total}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Submit Buttons */}
+        {quotation.selectedEvents.length > 0 && (
+          <div className="quotation-section" style={{
+            background: "white",
+            padding: "24px",
+            borderRadius: "12px",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+          }}>
+            <div style={{ display: "grid", gap: "12px" }}>
+              <button
+                onClick={sendQuotationEmail}
+                disabled={loading}
+                className="submit-button"
+                style={{
+                  width: "100%",
+                  padding: "12px",
                   background: "#10b981",
                   color: "white",
                   border: "none",
-                  borderRadius: "6px",
+                  borderRadius: "8px",
                   fontWeight: "600",
                   fontSize: "14px",
-                  cursor: "pointer",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  opacity: loading ? 0.6 : 1,
                 }}
               >
-                +
+                {loading ? "Sending..." : "📧 Submit Quotation"}
               </button>
-              {showCustomEventInput && (
-                <>
-                  <input
-                    type="text"
-                    placeholder="Enter custom event name..."
-                    value={newEventName}
-                    onChange={(e) => setNewEventName(e.target.value)}
-                    onKeyPress={(e) => e.key === "Enter" && handleAddCustomEvent()}
-                    style={{
-                      flex: 1,
-                      padding: "10px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                    }}
-                  />
-                  <button
-                    onClick={handleAddCustomEvent}
-                    style={{
-                      padding: "10px 16px",
-                      background: "#3b82f6",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "6px",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Add
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* Submit Button */}
-          {quotation.selectedEvents.length > 0 && (
-            <div
-              className="quotation-section"
-              style={{
-                background: "white",
-                padding: "24px",
-                borderRadius: "12px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              }}
-            >
-              <div style={{ display: "grid", gap: "12px" }}>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                 <button
-                  onClick={sendQuotationEmail}
+                  onClick={downloadQuotationPDF}
                   disabled={loading}
-                  className="submit-button"
                   style={{
                     width: "100%",
                     padding: "12px",
-                    background: "#10b981",
+                    background: "#3b82f6",
                     color: "white",
                     border: "none",
                     borderRadius: "8px",
@@ -695,468 +1321,31 @@ export default function Quotation({
                     opacity: loading ? 0.6 : 1,
                   }}
                 >
-                  {loading ? "Sending..." : "Submit Quotation"}
+                  📄 Owner PDF
                 </button>
                 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                  <button
-                    onClick={downloadQuotationPDF}
-                    disabled={loading}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      background: "#3b82f6",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "8px",
-                      fontWeight: "600",
-                      fontSize: "14px",
-                      cursor: loading ? "not-allowed" : "pointer",
-                      opacity: loading ? 0.6 : 1,
-                    }}
-                  >
-                    Full PDF
-                  </button>
-                  
-                  <button
-                    onClick={downloadCustomerPDF}
-                    disabled={loading}
-                    style={{
-                      width: "100%",
-                      padding: "12px",
-                      background: "#8b5cf6",
-                      color: "white",
-                      border: "none",
-                      borderRadius: "8px",
-                      fontWeight: "600",
-                      fontSize: "14px",
-                      cursor: loading ? "not-allowed" : "pointer",
-                      opacity: loading ? 0.6 : 1,
-                    }}
-                  >
-                    Customer PDF
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* RIGHT COLUMN - Requirements */}
-        <div>
-          {quotation.selectedEvents.length > 0 && (
-            <div style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: "20px"
-            }}>
-              <div className="quotation-section" style={{
-                background: "white",
-                padding: "24px",
-                borderRadius: "12px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              }}>
-                <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
-                  📸 Select Requirements
-                </h3>
-                
-                <div className="event-tabs" style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
-                  {quotation.selectedEvents.map((eventType) => (
-                    <div key={eventType} style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                      <button
-                        onClick={() => {
-                          scrollToTop()
-                          setActiveRequirementTab(eventType)
-                        }}
-                        className="event-tab-button"
-                        style={{
-                          padding: "10px 16px",
-                          background: activeRequirementTab === eventType ? "#10b981" : "#f3f4f6",
-                          color: activeRequirementTab === eventType ? "white" : "#4b5563",
-                          border: "none",
-                          borderRadius: "8px",
-                          fontWeight: "600",
-                          fontSize: "13px",
-                          cursor: "pointer",
-                          transition: "all 0.2s",
-                        }}
-                      >
-                        {eventType}
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          cancelEvent(eventType)
-                        }}
-                        className="cancel-event-btn"
-                        title="Cancel this event"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {activeRequirementTab && (
-                  <div className="event-dates-display" style={{
-                    background: "#f9fafb",
+                <button
+                  onClick={downloadCustomerPDF}
+                  disabled={loading}
+                  style={{
+                    width: "100%",
                     padding: "12px",
+                    background: "#8b5cf6",
+                    color: "white",
+                    border: "none",
                     borderRadius: "8px",
-                    marginBottom: "16px",
-                    border: "1px solid #e5e7eb"
-                  }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                      <div>
-                        <label className="form-label" style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" }}>
-                          📅 Event Date
-                        </label>
-                        <input
-                          type="date"
-                          value={quotation.eventDates[activeRequirementTab]?.date || ""}
-                          onChange={(e) =>
-                            setQuotation({
-                              ...quotation,
-                              eventDates: {
-                                ...quotation.eventDates,
-                                [activeRequirementTab]: {
-                                  ...quotation.eventDates[activeRequirementTab],
-                                  date: e.target.value,
-                                },
-                              },
-                            })
-                          }
-                          className="date-input"
-                          style={{
-                            width: "100%",
-                            padding: "8px",
-                            border: "1px solid #d1d5db",
-                            borderRadius: "6px",
-                            fontSize: "13px",
-                          }}
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="form-label" style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" }}>
-                          ⏰ Time Slot
-                        </label>
-                        <select
-                          value={quotation.eventDates[activeRequirementTab]?.timeSlot || ""}
-                          onChange={(e) =>
-                            setQuotation({
-                              ...quotation,
-                              eventDates: {
-                                ...quotation.eventDates,
-                                [activeRequirementTab]: {
-                                  ...quotation.eventDates[activeRequirementTab],
-                                  timeSlot: e.target.value,
-                                },
-                              },
-                            })
-                          }
-                          className="form-select"
-                          style={{
-                            width: "100%",
-                            padding: "8px",
-                            border: "1px solid #d1d5db",
-                            borderRadius: "6px",
-                            fontSize: "13px",
-                            background: "white",
-                          }}
-                        >
-                          <option value="">Select time slot</option>
-                          {timeSlots.map((slot) => (
-                            <option key={slot} value={slot}>{slot}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {activeRequirementTab && (
-                  <div className="requirements-list">
-  {(SERVICES_BY_EVENT[activeRequirementTab] || SERVICES_BY_EVENT["Other"] || []).map((service) => {
-    const serviceKey = `${activeRequirementTab}-${service.name}`
-    const isSelected = quotation.eventServices?.[serviceKey] || false
-    const timeValue = quotation.serviceTimes?.[serviceKey] ?? ""
-
-    return (
-      <div
-        key={serviceKey}
-        className="requirement-item"
-        style={{
-          display: "grid",
-          gridTemplateColumns: "24px 1fr 120px 120px",
-          alignItems: "center",
-          gap: "12px",
-          padding: "10px 0",
-          borderBottom: "1px solid #f3f4f6"
-        }}
-      >
-        {/* Checkbox */}
-        <input
-            type="checkbox"
-  checked={isSelected}
-  onChange={() => {
-    const cameraKey = SERVICE_TO_CAMERA_MAP[service.name]
-
-    const priceFromPricingList =
-      cameraKey && quotationPricing?.[cameraKey]?.price
-        ? quotationPricing[cameraKey].price
-        : service.amount
-
-    const timeFromPricingList =
-      cameraKey && quotationPricing?.[cameraKey]?.time
-        ? quotationPricing[cameraKey].time
-        : ""
-
-    setQuotation({
-      ...quotation,
-      eventServices: {
-        ...quotation.eventServices,
-        [serviceKey]: !isSelected,
-      },
-      serviceAmounts: {
-        ...quotation.serviceAmounts,
-        [serviceKey]: priceFromPricingList,
-      },
-      serviceTimes: {
-        ...quotation.serviceTimes,
-        [serviceKey]: timeFromPricingList,
-      },
-    })
-  }}
-  style={{
-    width: "18px",
-    height: "18px",
-    cursor: "pointer",
-    accentColor: "#10b981"
-  }}
-        />
-
-        {/* Requirement Name */}
-        <div
-          className="requirement-label"
-          style={{
-            fontWeight: "600",
-            fontSize: "14px",
-            color: "#1f2937"
-          }}
-        >
-          {service.name}
-        </div>
-
-        {/* Time Slot */}
-        <select
-  value={timeValue}
-  disabled={!isSelected}
-  onChange={(e) => {
-    setQuotation({
-      ...quotation,
-      serviceTimes: {
-        ...quotation.serviceTimes,
-        [serviceKey]: e.target.value,
-      },
-    })
-  }}
-  style={{
-    padding: "6px",
-    border: "1px solid #d1d5db",
-    borderRadius: "6px",
-    fontSize: "13px",
-    background: isSelected ? "white" : "#f3f4f6",
-    cursor: isSelected ? "pointer" : "not-allowed",
-  }}
->
-  <option value="">Not Selected</option>
-  <option value="Half Day">Half Day</option>
-  <option value="Full Day">Full Day</option>
-</select>
-
-
-        {/* Price */}
-        <input
-          type="number"
-          value={
-  quotation.serviceAmounts?.[serviceKey] ??
-  //pricingFromList ??
-  service.amount
-}
-          disabled={!isSelected}
-          onChange={(e) => {
-            setQuotation({
-              ...quotation,
-              serviceAmounts: {
-                ...quotation.serviceAmounts,
-                [serviceKey]: parseInt(e.target.value) || 0,
-              },
-            })
-          }}
-          style={{
-            padding: "8px",
-            border: "1px solid #d1d5db",
-            borderRadius: "6px",
-            fontSize: "13px",
-            textAlign: "right",
-            background: isSelected ? "white" : "#f3f4f6"
-          }}
-        />
-      </div>
-    )
-  })}
-</div>
-
-                )}
-              </div>
-
-              {/* Sheets Section */}
-              <div className="quotation-section" style={{
-                background: "white",
-                padding: "24px",
-                borderRadius: "12px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              }}>
-                <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
-                  📄 Sheets Information
-                </h3>
-                
-                <div style={{ display: "grid", gap: "16px" }}>
-                  {/* No. of Sheets */}
-                  <div>
-                    <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                      No. of Sheets
-                    </label>
-                    <input
-                      type="number"
-                       min="0"
-                       value={Math.max(0, quotation.sheetsCount || 0)}
-                      onChange={(e) => setQuotation({ ...quotation, sheetsCount: e.target.value })}
-                      className="form-input"
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "6px",
-                        fontSize: "14px",
-                      }}
-                      placeholder="Enter number of sheets"
-                    />
-                  </div>
-
-                  {/* Total Sheets Amount */}
-                  <div>
-                    <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                      Sheets Total Amount
-                    </label>
-                    <input
-                      type="number"
-                      value={quotation.sheetsCustomerPrice || ''}
-                      onChange={(e) => setQuotation({ ...quotation, sheetsCustomerPrice: e.target.value })}
-                      onWheel={(e) => e.target.blur()}   // ✅ FIX
-                      className="form-input"
-                      style={{
-                        width: "100%",
-                        padding: "10px",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "6px",
-                        fontSize: "14px",
-                      }}
-                      placeholder="Enter total sheets amount"
-                    />
-                  </div>
-                  
-                  {/* Sheets Total Display */}
-                  {quotation.sheetsCustomerPrice && (
-                    <div style={{
-                      padding: "12px",
-                      background: "#f0f9ff",
-                      borderRadius: "8px",
-                      border: "1px solid #bae6fd"
-                    }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{ fontSize: "14px", fontWeight: "600", color: "#0369a1" }}>
-                          Sheets Total:
-                        </span>
-                        <span style={{ fontSize: "16px", fontWeight: "700", color: "#0369a1" }}>
-                          ₹{totals.sheetsCustomerPrice}
-                        </span>
-                      </div>
-                      {quotation.sheetsCount > 0 && (
-                        <div style={{ fontSize: "12px", color: "#64748b", marginTop: "4px" }}>
-                          Quantity: {Math.max(0, quotation.sheetsCount || 0)} sheets
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="totals-section quotation-section" style={{
-                background: "white",
-                padding: "24px",
-                borderRadius: "12px",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-              }}>
-                <div style={{ marginBottom: "16px" }}>
-                  <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                    Discount (%)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={quotation.discount || ''}
-                    onChange={(e) => setQuotation({ ...quotation, discount: e.target.value })}
-                    className="form-input"
-                    style={{
-                      width: "100%",
-                      padding: "10px",
-                      border: "1px solid #d1d5db",
-                      borderRadius: "6px",
-                      fontSize: "14px",
-                    }}
-                  />
-                </div>
-
-                <div style={{ 
-                  paddingTop: "16px",
-                  borderTop: "2px solid #e5e7eb"
-                }}>
-                  <div className="total-row" style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                    <span style={{ fontSize: "14px", color: "#6b7280", fontWeight: "600" }}>Services Total:</span>
-                    <span className="total-value" style={{ fontSize: "16px", fontWeight: "700", color: "#1f2937" }}>₹{totals.servicesTotal}</span>
-                  </div>
-                  
-                  {/* Sheets Total Row */}
-                  {quotation.sheetsCustomerPrice && (
-                    <div className="total-row" style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                      <span style={{ fontSize: "14px", color: "#6b7280", fontWeight: "600" }}>
-                        Sheets Total:
-                      </span>
-                      <span className="total-value" style={{ fontSize: "16px", fontWeight: "700", color: "#0369a1" }}>₹{totals.sheetsCustomerPrice}</span>
-                    </div>
-                  )}
-                  
-                  <div className="total-row" style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
-                    <span style={{ fontSize: "14px", color: "#6b7280", fontWeight: "600" }}>Discount ({totals.discountPercent}%):</span>
-                    <span className="total-value" style={{ fontSize: "16px", fontWeight: "700", color: "#ef4444" }}>-₹{totals.discountAmount}</span>
-                  </div>
-                  
-                  <div style={{ 
-                    display: "flex",
-                    justifyContent: "space-between",
-                    paddingTop: "12px",
-                    borderTop: "2px solid #e5e7eb"
-                  }}>
-                    <span style={{ fontSize: "16px", fontWeight: "700", color: "#1f2937" }}>Final Amount:</span>
-                    <span className="total-final" style={{ fontSize: "20px", fontWeight: "800", color: "#10b981" }}>₹{totals.total}</span>
-                  </div>
-                </div>
+                    fontWeight: "600",
+                    fontSize: "14px",
+                    cursor: loading ? "not-allowed" : "pointer",
+                    opacity: loading ? 0.6 : 1,
+                  }}
+                >
+                  👤 Customer PDF
+                </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,27 +1,41 @@
 'use client'
-import React, { useState } from 'react'
-// ⬇️ SAFE START BELOW LETTERHEAD
-const SAFE_TOP_Y = 95; // adjust between 65–85 if needed
+import React, { useState, useEffect } from 'react'
 
-const cameraConfigurations = {
-  'Photo Camera': { Sony: ['7R III', '7 IV', '7R V'], Canon: ['EOS R5'] },
-  'Video Camera': { Sony: ['FX3', 'FX30', '7 IV'], Canon: ['EOS R5'] },
-  'Candid Photo': { Sony: ['7R V'], Canon: ['EOS R5'] },
-  'Candid Video': { Sony: ['FX3', 'A7S III', '7 IV'], Canon: ['EOS R5'] }
-}
+const SAFE_TOP_Y = 95;
 
 export default function PricingList({ quotationPricing, setQuotationPricing }) {
   const [activePricingLayout, setActivePricingLayout] = useState('Quotation')
-const [showSubmittedMessage, setShowSubmittedMessage] = useState(false)
-const [submittedPrices, setSubmittedPrices] = useState({})
+  const [showSubmittedMessage, setShowSubmittedMessage] = useState(false)
+  const [submittedPrices, setSubmittedPrices] = useState({})
+  const [isLoadingItems, setIsLoadingItems] = useState(true)
+
+  // ✅ Toast notification state
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
+
+  // ✅ Categories for different item types
+  const categories = ['Camera', 'Net Live', 'Drone', 'LED Wall', 'Sheets']
+  const sheetQualities = ['Premium', 'Standard', 'Normal']
+  const brands = ['Sony', 'Canon', 'Nikon', 'Panasonic', 'DJI', 'Samsung', 'LG', 'Other']
+
+  // ✅ Initialize items as empty array - will be loaded from DB
+  const [items, setItems] = useState([])
+
+  const [newItem, setNewItem] = useState({
+    category: 'Camera',
+    brand: 'Sony',
+    model: '',
+    actualPriceHalfDay: 0,
+    customerPriceHalfDay: 0,
+    actualPriceFullDay: 0,
+    customerPriceFullDay: 0,
+    quality: 'Premium'
+  })
 
   const [b2bForm, setB2bForm] = useState({
     studioName: '',
     personName: '',
     phoneNumber: '',
-    cameraType: '',
-    cameraBrand: 'Sony',
-    cameraModel: '',
+    selectedItems: [],
     location: '',
     timeSlot: 'Half Day',
     totalPrice: 0,
@@ -29,93 +43,162 @@ const [submittedPrices, setSubmittedPrices] = useState({})
     balance: 0
   })
 
-  const [cameraTimeSlots, setCameraTimeSlots] = useState({
-    'Photo Camera': 'Half Day',
-    'Video Camera': 'Half Day',
-    'Candid Photo': 'Half Day',
-    'Candid Video': 'Half Day'
-  })
-
-  const [cameraBrands, setCameraBrands] = useState({
-    'Photo Camera': 'Sony',
-    'Video Camera': 'Sony',
-    'Candid Photo': 'Sony',
-    'Candid Video': 'Sony'
-  })
-
-  const [cameraModels, setCameraModels] = useState({
-    'Photo Camera': '',
-    'Video Camera': '',
-    'Candid Photo': '',
-    'Candid Video': ''
-  })
-
-  const [pricingData, setPricingData] = useState({
-    cameras: {
-      'Photo Camera': { actualPrice: 25000, customerPrice: 25000 },
-      'Video Camera': { actualPrice: 30000, customerPrice: 30000 },
-      'Candid Photo': { actualPrice: 20000, customerPrice: 20000 },
-      'Candid Video': { actualPrice: 25000, customerPrice: 25000 }
-    }
-  })
-
-  const cameraOptions = ['Photo Camera', 'Video Camera', 'Candid Photo', 'Candid Video']
-  const timeSlots = ['Half Day', 'Full Day']
-
-  const calculateQuotationTotal = () => {
-    let total = 0
-    Object.values(pricingData.cameras).forEach(c => total += c.customerPrice || 0)
-    return total
+  // ✅ Toast helper function
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type })
+    setTimeout(() => {
+      setToast({ show: false, message: '', type: 'success' })
+    }, 3000)
   }
 
-  /* 🔥 PRICE AUTO SYNC */
-  const handlePriceUpdate = (cameraType, priceType, value) => {
-    const price = parseInt(value) || 0
+  // ✅ Load items on component mount
+  useEffect(() => {
+    loadItemsFromDb()
+  }, [])
 
-    setPricingData(prev => ({
-      ...prev,
-      cameras: {
-        ...prev.cameras,
-        [cameraType]: {
-          ...prev.cameras[cameraType],
-          [priceType]: price
-        }
+  const loadItemsFromDb = async () => {
+    try {
+      setIsLoadingItems(true)
+      const response = await fetch('/api/quotation-pricing')
+      const data = await response.json()
+      
+      if (data.items && data.items.length > 0) {
+        setItems(data.items)
+        console.log('✅ Loaded items from DB:', data.items.length)
+        showToast('✅ Items loaded successfully', 'success')
+      } else {
+        const defaultItems = [
+          { 
+            id: 1, 
+            category: 'Camera', 
+            brand: 'Sony', 
+            model: '7R III', 
+            actualPriceHalfDay: 15000, 
+            customerPriceHalfDay: 25000,
+            actualPriceFullDay: 25000,
+            customerPriceFullDay: 40000
+          },
+          { 
+            id: 2, 
+            category: 'Camera', 
+            brand: 'Sony', 
+            model: 'FX3', 
+            actualPriceHalfDay: 20000, 
+            customerPriceHalfDay: 30000,
+            actualPriceFullDay: 35000,
+            customerPriceFullDay: 50000
+          }
+        ]
+        setItems(defaultItems)
+        console.log('ℹ️ No items in DB, using defaults')
+        showToast('ℹ️ Using default items', 'info')
       }
-    }))
-
-    if (priceType === 'customerPrice') {
-      setQuotationPricing(prev => ({
-        ...prev,
-        [cameraType]: {
-          ...(prev?.[cameraType] || {}),
-          price
+    } catch (error) {
+      console.error('Load error:', error)
+      showToast('❌ Failed to load items', 'error')
+      const defaultItems = [
+        { 
+          id: 1, 
+          category: 'Camera', 
+          brand: 'Sony', 
+          model: '7R III', 
+          actualPriceHalfDay: 15000, 
+          customerPriceHalfDay: 25000,
+          actualPriceFullDay: 25000,
+          customerPriceFullDay: 40000
         }
-      }))
+      ]
+      setItems(defaultItems)
+    } finally {
+      setIsLoadingItems(false)
     }
   }
 
-  /* 🔥 TIME AUTO SYNC */
-  const handleCameraTimeSlotChange = (camera, timeSlot) => {
-    setCameraTimeSlots(prev => ({ ...prev, [camera]: timeSlot }))
-
-    setQuotationPricing(prev => ({
-      ...prev,
-      [camera]: {
-        ...(prev?.[camera] || {}),
-        time: timeSlot
-      }
-    }))
+  const updateItem = (id, field, value) => {
+    setItems(prev => prev.map(item => 
+      item.id === id ? { ...item, [field]: field.includes('Price') ? (parseInt(value) || 0) : value } : item
+    ))
   }
 
-  const handleCameraModelChange = (cameraType, brand, model) => {
-    setCameraBrands(prev => ({ ...prev, [cameraType]: brand }))
-    setCameraModels(prev => ({ ...prev, [cameraType]: model }))
+  const deleteItem = (id) => {
+    if (items.length === 1) {
+      showToast('❌ You must have at least one item!', 'error')
+      return
+    }
+    if (confirm('Delete this item?')) {
+      setItems(prev => prev.filter(item => item.id !== id))
+      showToast('✅ Item deleted successfully', 'success')
+    }
+  }
+
+  // ✅ Add new item - Sheets only need single price per sheet
+  const addItem = () => {
+    if (newItem.category !== 'Sheets' && !newItem.model.trim()) {
+      showToast('❌ Please enter model/description', 'error')
+      return
+    }
+
+    const itemToAdd = {
+      ...newItem,
+      id: Date.now()
+    }
+
+    // For sheets, use quality as brand and set model
+    if (newItem.category === 'Sheets') {
+      itemToAdd.model = `${newItem.quality} Quality`
+      itemToAdd.brand = newItem.quality
+      // For sheets, Full Day prices are set to 0 (not used)
+      itemToAdd.actualPriceFullDay = 0
+      itemToAdd.customerPriceFullDay = 0
+    }
+
+    setItems(prev => [...prev, itemToAdd])
+    setNewItem({ 
+      category: 'Camera', 
+      brand: 'Sony', 
+      model: '', 
+      actualPriceHalfDay: 0, 
+      customerPriceHalfDay: 0,
+      actualPriceFullDay: 0,
+      customerPriceFullDay: 0,
+      quality: 'Premium'
+    })
+    showToast('✅ Item added successfully!', 'success')
+  }
+
+  const saveItemsToDb = async () => {
+    try {
+      const response = await fetch('/api/quotation-pricing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items })
+      })
+      if (!response.ok) throw new Error('Save failed')
+      showToast('✅ Items saved to database!', 'success')
+    } catch (error) {
+      console.error('Save error:', error)
+      showToast('❌ Failed to save items', 'error')
+    }
+  }
+
+  const submitQuotationPrices = () => {
+    const newSubmittedPrices = {}
+    items.forEach(item => {
+      const key = `${item.category} - ${item.brand} ${item.model}`
+      newSubmittedPrices[key] = {
+        halfDay: item.customerPriceHalfDay,
+        fullDay: item.customerPriceFullDay
+      }
+    })
+    setSubmittedPrices(newSubmittedPrices)
+    setShowSubmittedMessage(true)
+    setTimeout(() => setShowSubmittedMessage(false), 3000)
+    showToast('✅ Prices submitted to Quotation section!', 'success')
   }
 
   const handleB2bInputChange = (field, value) => {
     setB2bForm(prev => {
       let newForm = { ...prev }
-      
       if (field === 'totalPrice') {
         newForm.totalPrice = Math.max(0, parseInt(value) || 0)
       } else if (field === 'advance') {
@@ -123,55 +206,17 @@ const [submittedPrices, setSubmittedPrices] = useState({})
       } else {
         newForm[field] = value
       }
-      
       newForm.balance = Math.max(0, newForm.totalPrice - newForm.advance)
-      
       return newForm
     })
   }
 
-  const handleB2bCameraTypeChange = (cameraType) => {
-    setB2bForm(prev => ({
-      ...prev,
-      cameraType,
-      cameraModel: ''
-    }))
-  }
-
-  // NEW: Function to submit prices to quotation section
-  const submitQuotationPrices = () => {
-    // Store the current customer prices
-    const newSubmittedPrices = {}
-    cameraOptions.forEach(camera => {
-      newSubmittedPrices[camera] = pricingData.cameras[camera]?.customerPrice || 0
-    })
-    setSubmittedPrices(newSubmittedPrices)
-    
-    // Show success message
-    setShowSubmittedMessage(true)
-    
-    // Hide message after 3 seconds
-    setTimeout(() => {
-      setShowSubmittedMessage(false)
-    }, 3000)
-    
-    // Show alert
-    alert('✅ Prices submitted to Quotation section! You can now go to the Quotation tab to use these prices.')
-  }
-
-  // NEW: Function to get price for a camera type (for quotation section)
-  const getCameraPrice = (cameraType) => {
-    return submittedPrices[cameraType] || pricingData.cameras[cameraType]?.customerPrice || 0
-  }
-
-   const downloadB2BPdf = async () => {
+  const downloadB2BPdf = async () => {
     try {
       if (!b2bForm.studioName || !b2bForm.phoneNumber || b2bForm.totalPrice <= 0) {
-        alert('❌ Please fill Studio Name, Phone, and Total Amount')
+        showToast('❌ Please fill Studio Name, Phone, and Total Amount', 'error')
         return
       }
-
-      /* ================= 1️⃣ SAVE TO MONGODB ================= */
 
       const payload = {
         id: Date.now().toString(),
@@ -179,13 +224,12 @@ const [submittedPrices, setSubmittedPrices] = useState({})
         person: b2bForm.personName,
         phone: b2bForm.phoneNumber,
         date: new Date().toISOString().split('T')[0],
-        camera: `${b2bForm.cameraType} - ${b2bForm.cameraBrand} ${b2bForm.cameraModel}`,
+        items: b2bForm.selectedItems,
         location: b2bForm.location,
         total: b2bForm.totalPrice,
         advance: b2bForm.advance,
         balance: b2bForm.totalPrice - b2bForm.advance,
-        status:
-          b2bForm.totalPrice - b2bForm.advance === 0 ? 'Paid' : 'Pending'
+        status: b2bForm.totalPrice - b2bForm.advance === 0 ? 'Paid' : 'Pending'
       }
 
       const saveRes = await fetch('/api/b2b-customers', {
@@ -194,56 +238,34 @@ const [submittedPrices, setSubmittedPrices] = useState({})
         body: JSON.stringify(payload)
       })
 
-      if (!saveRes.ok) {
-        throw new Error('MongoDB save failed')
-      }
-
-      /* ================= 2️⃣ PDF (UNCHANGED) ================= */
+      if (!saveRes.ok) throw new Error('MongoDB save failed')
 
       const { jsPDF } = await import('jspdf')
-      const doc = new jsPDF({
-  orientation: "portrait",
-  unit: "mm",
-  format: "a4",
-  compress: true,
-})
-doc.addImage("/letterhead.jpeg", "JPEG", 0, 0, 210, 297)
-let y = 85
-
-
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4", compress: true })
+      doc.addImage("/letterhead.jpeg", "JPEG", 0, 0, 210, 297)
+      
       doc.setProperties({
         title: 'B2B Order Form',
-        subject: 'Camera Rental Order',
+        subject: 'Equipment Rental Order',
         author: 'Kalakruthi Photography',
         creator: 'Kalakruthi Admin Dashboard'
       })
 
-      
-
       doc.setTextColor(0, 0, 0)
-      doc.setFontSize(10)
       const date = new Date().toLocaleDateString('en-IN')
       let yPosition = SAFE_TOP_Y
 
-// Date (top right)
-doc.setFontSize(10)
-doc.setFont("helvetica", "normal")
-doc.text(`Date: ${date}`, 190, yPosition, { align: "right" })
+      doc.setFontSize(10)
+      doc.setFont("helvetica", "normal")
+      doc.text(`Date: ${date}`, 190, yPosition, { align: "right" })
+      yPosition += 10
 
-yPosition += 10
-
-// Order Details heading
-doc.setFontSize(14)
-doc.setFont("helvetica", "bold")
-doc.text("Order Details", 14, yPosition)
-
-yPosition += 12
-
+      doc.setFontSize(14)
+      doc.setFont("helvetica", "bold")
+      doc.text("Order Details", 14, yPosition)
+      yPosition += 12
 
       doc.setFontSize(10)
-      doc.setFont('helvetica', 'normal')
-     // let yPosition = 65
-
       doc.setFont('helvetica', 'bold')
       doc.text('Studio Information:', 14, yPosition)
       yPosition += 7
@@ -251,29 +273,23 @@ yPosition += 12
       doc.setFont('helvetica', 'normal')
       doc.text(`Studio Name: ${b2bForm.studioName}`, 20, yPosition)
       yPosition += 7
-
       doc.text(`Contact Person: ${b2bForm.personName || 'Not Provided'}`, 20, yPosition)
       yPosition += 7
-
       doc.text(`Phone: ${b2bForm.phoneNumber}`, 20, yPosition)
       yPosition += 7
 
       yPosition += 3
       doc.setFont('helvetica', 'bold')
-      doc.text('Camera Details:', 14, yPosition)
+      doc.text('Equipment Details:', 14, yPosition)
       yPosition += 7
 
       doc.setFont('helvetica', 'normal')
-      doc.text(`Camera Type: ${b2bForm.cameraType || 'Not Selected'}`, 20, yPosition)
-      yPosition += 7
+      b2bForm.selectedItems.forEach(item => {
+        doc.text(`• ${item}`, 20, yPosition)
+        yPosition += 6
+      })
+      yPosition += 4
 
-      doc.text(`Camera Brand: ${b2bForm.cameraBrand}`, 20, yPosition)
-      yPosition += 7
-
-      doc.text(`Camera Model: ${b2bForm.cameraModel || 'Not Selected'}`, 20, yPosition)
-      yPosition += 7
-
-      yPosition += 3
       doc.setFont('helvetica', 'bold')
       doc.text('Event Details:', 14, yPosition)
       yPosition += 7
@@ -281,7 +297,6 @@ yPosition += 12
       doc.setFont('helvetica', 'normal')
       doc.text(`Location: ${b2bForm.location || 'Not Provided'}`, 20, yPosition)
       yPosition += 7
-
       doc.text(`Time Slot: ${b2bForm.timeSlot}`, 20, yPosition)
       yPosition += 7
 
@@ -291,9 +306,9 @@ yPosition += 12
       yPosition += 7
 
       const paymentData = [
-        ['Total Amount', `${b2bForm.totalPrice.toLocaleString('en-IN')}`],
-        ['Advance Paid', `${b2bForm.advance.toLocaleString('en-IN')}`],
-        ['Balance Due', `${b2bForm.balance.toLocaleString('en-IN')}`]
+        ['Total Amount', `₹${b2bForm.totalPrice.toLocaleString('en-IN')}`],
+        ['Advance Paid', `₹${b2bForm.advance.toLocaleString('en-IN')}`],
+        ['Balance Due', `₹${b2bForm.balance.toLocaleString('en-IN')}`]
       ]
 
       doc.setFont('helvetica', 'normal')
@@ -306,23 +321,16 @@ yPosition += 12
       yPosition += 15
       doc.setFontSize(8)
       doc.setFont('helvetica', 'italic')
-      doc.text(
-        'This is a computer-generated document. No signature required.',
-        105,
-        yPosition,
-        { align: 'center' }
-      )
+      doc.text('This is a computer-generated document. No signature required.', 105, yPosition, { align: 'center' })
 
       doc.save(`B2B-Order-${b2bForm.studioName}-${Date.now()}.pdf`)
-
-      alert('✅ PDF downloaded & B2B customer updated')
+      showToast('✅ PDF downloaded & B2B customer saved!', 'success')
 
     } catch (error) {
       console.error('❌ PDF Download ERROR:', error)
-      alert('❌ Failed to generate PDF. Please try again.')
+      showToast('❌ Failed to generate PDF', 'error')
     }
   }
-
 
   const formInputStyle = {
     padding: '14px 16px',
@@ -344,7 +352,7 @@ yPosition += 12
     background: '#fafbfc',
     fontWeight: '500',
     minHeight: '44px',
-    flex: 1
+    width: '100%'
   }
 
   const priceInputStyleActual = {
@@ -355,7 +363,8 @@ yPosition += 12
     textAlign: 'right',
     fontWeight: '600',
     fontSize: '14px',
-    minHeight: '44px'
+    minHeight: '44px',
+    width: '100%'
   }
 
   const priceInputStyleCustomer = {
@@ -366,7 +375,34 @@ yPosition += 12
     textAlign: 'right',
     fontWeight: '600',
     fontSize: '14px',
-    minHeight: '44px'
+    minHeight: '44px',
+    width: '100%'
+  }
+
+  // ✅ Show loading state while fetching items
+  if (isLoadingItems) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+      }}>
+        <div style={{
+          background: 'white',
+          padding: '40px',
+          borderRadius: '16px',
+          boxShadow: '0 20px 50px rgba(0,0,0,0.1)',
+          textAlign: 'center'
+        }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⏳</div>
+          <div style={{ fontSize: '18px', fontWeight: '600', color: '#1f2937' }}>
+            Loading Pricing Data...
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -392,7 +428,7 @@ yPosition += 12
         .pricing-tab {
           padding: 14px 20px;
           border: none;
-          border-radius: 10px;
+          borderRadius: 10px;
           font-weight: 600;
           font-size: 14px;
           cursor: pointer;
@@ -414,7 +450,7 @@ yPosition += 12
           box-shadow: 0 20px 50px rgba(0,0,0,0.12);
           border: 1px solid #f1f5f9;
           width: 100%;
-          max-width: 900px;
+          max-width: 1400px;
           margin: 0 auto;
         }
         
@@ -422,47 +458,100 @@ yPosition += 12
           padding: 0 24px 24px;
         }
 
-        /* Mobile responsive styles */
+        .category-badge {
+          display: inline-block;
+          padding: 4px 12px;
+          background: #e0e7ff;
+          border-radius: 6px;
+          font-size: 11px;
+          font-weight: 700;
+          color: #4338ca;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+        }
+
+        /* ✅ Toast Notification Styles */
+        .toast {
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          padding: 16px 24px;
+          border-radius: 12px;
+          box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+          z-index: 9999;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          font-weight: 600;
+          font-size: 14px;
+          animation: slideIn 0.3s ease-out;
+          max-width: 400px;
+        }
+
+        .toast.success {
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          color: white;
+        }
+
+        .toast.error {
+          background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+          color: white;
+        }
+
+        .toast.info {
+          background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+          color: white;
+        }
+
+        @keyframes slideIn {
+          from {
+            transform: translateX(400px);
+            opacity: 0;
+          }
+          to {
+            transform: translateX(0);
+            opacity: 1;
+          }
+        }
+
         @media (max-width: 768px) {
+          .toast {
+            right: 10px;
+            left: 10px;
+            max-width: calc(100% - 20px);
+          }
+
           .pricing-card-header {
             padding: 16px !important;
           }
           
-          .grid-header, .grid-row {
+          .grid-header {
+            display: none !important;
+          }
+          
+          .grid-row {
             grid-template-columns: 1fr !important;
-            gap: 16px !important;
-            padding: 12px !important;
-          }
-          
-          .camera-info-mobile {
-            display: flex !important;
-            flex-direction: column !important;
-            gap: 8px !important;
-          }
-          
-          .price-inputs-mobile {
-            display: grid !important;
-            grid-template-columns: 1fr 1fr !important;
             gap: 12px !important;
+            padding: 16px !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 12px !important;
+            margin-bottom: 12px !important;
+            background: #f8fafc !important;
           }
           
           .mobile-label {
             font-size: 12px !important;
             font-weight: 600 !important;
             color: #64748b !important;
-            margin-bottom: 4px !important;
-          }
-          
-          .mobile-value {
-            font-weight: 600 !important;
-            font-size: 14px !important;
-            color: #1f2937 !important;
+            margin-bottom: 6px !important;
+            display: block !important;
           }
         }
 
         @media (min-width: 768px) {
           .pricing-tabs { flex-direction: row; }
           .pricing-tab { flex: 1; font-size: 16px; }
+          .mobile-label { display: none !important; }
         }
 
         @media (max-width: 480px) {
@@ -470,17 +559,18 @@ yPosition += 12
           .pricing-tabs { padding: 16px; }
           .pricing-tab { padding: 12px 16px; font-size: 13px; }
           .b2b-form-container { padding: 0 16px 20px; }
-          
-          .submit-message {
-            position: fixed !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) !important;
-            width: 90% !important;
-            z-index: 1000 !important;
-          }
         }
       `}</style>
+
+      {/* ✅ Toast Notification */}
+      {toast.show && (
+        <div className={`toast ${toast.type}`}>
+          <span style={{ fontSize: '20px' }}>
+            {toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}
+          </span>
+          <span>{toast.message}</span>
+        </div>
+      )}
 
       <div className="pricing-tabs">
         <button className={`pricing-tab ${activePricingLayout === 'Quotation' ? 'active' : ''}`}
@@ -493,25 +583,6 @@ yPosition += 12
         </button>
       </div>
 
-      {showSubmittedMessage && (
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          right: '20px',
-          background: '#10b981',
-          color: 'white',
-          padding: '12px 20px',
-          borderRadius: '10px',
-          boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-          zIndex: 1000,
-          fontWeight: '600',
-          fontSize: '14px',
-          animation: 'fadeIn 0.3s ease-in'
-        }}>
-          ✅ Prices submitted to Quotation section!
-        </div>
-      )}
-
       {activePricingLayout === 'Quotation' ? (
         <div className="pricing-card">
           <div className="pricing-card-header" style={{
@@ -519,185 +590,399 @@ yPosition += 12
             padding: '20px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white', borderRadius: '16px 16px 0 0'
           }}>
-            <h2 style={{ margin: 0, fontSize: '18px' }}>👤 Quotation Pricing</h2>
-            <div style={{ fontSize: '24px', fontWeight: '700' }}>
-              ₹{calculateQuotationTotal().toLocaleString()}
-            </div>
-          </div>
-          
-          {/* Desktop Header */}
-          <div className="grid-header" style={{
-            display: 'grid', 
-            gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr', 
-            gap: '8px',
-            padding: '16px 24px', 
-            background: '#f8fafc', 
-            fontWeight: '600', 
-            color: '#1e293b', 
-            fontSize: '13px'
-          }}>
-            <div>Camera</div>
-            <div style={{ textAlign: 'center' }}>Brand/Model</div>
-            <div style={{ textAlign: 'center' }}>Time</div>
-            <div style={{ textAlign: 'center' }}>Actual ₹</div>
-            <div style={{ textAlign: 'center' }}>Customer ₹</div>
+            <h2 style={{ margin: 0, fontSize: '18px' }}>👤 Quotation Pricing (Half Day & Full Day)</h2>
           </div>
 
-          <div style={{ padding: '0 24px 24px' }}>
-            {cameraOptions.map((camera) => (
-              <div key={camera} className="grid-row" style={{
-                display: 'grid', 
-                gridTemplateColumns: '1.5fr 1fr 1fr 1fr 1fr', 
-                gap: '12px', 
-                alignItems: 'center',
-                padding: '16px 0', 
-                borderBottom: '1px solid #f1f5f9'
-              }}>
-                {/* Desktop View */}
-                <div style={{ fontWeight: '600', fontSize: '14px', color: '#1f2937' }}>
-                  📷 {camera}
-                </div>
-                
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                  <select style={selectInputStyle}
-                    value={cameraBrands[camera] || 'Sony'}
-                    onChange={(e) => handleCameraModelChange(camera, e.target.value, cameraModels[camera])}
+          {/* ✅ Add Item Form - Sheets have only Price Per Sheet */}
+          <div style={{ padding: '24px', background: '#f0fdf4', borderBottom: '2px solid #10b981' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#065f46' }}>
+              ➕ Add New Item
+            </h3>
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
+                <div>
+                  <label className="mobile-label">Category *</label>
+                  <select
+                    value={newItem.category}
+                    onChange={(e) => setNewItem(prev => ({ ...prev, category: e.target.value }))}
+                    style={formInputStyle}
                   >
-                    <option>Sony</option>
-                    <option>Canon</option>
-                  </select>
-                  <select style={selectInputStyle}
-                    value={cameraModels[camera] || ''}
-                    onChange={(e) => handleCameraModelChange(camera, cameraBrands[camera], e.target.value)}
-                  >
-                    <option value="">Model</option>
-                    {cameraConfigurations[camera][cameraBrands[camera] || 'Sony'].map((model) => (
-                      <option key={model} value={model}>{model}</option>
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
                 </div>
+
+                {/* ✅ Sheets: Show Quality selector instead of Brand */}
+                {newItem.category === 'Sheets' ? (
+                  <div>
+                    <label className="mobile-label">Quality *</label>
+                    <select
+                      value={newItem.quality}
+                      onChange={(e) => setNewItem(prev => ({ ...prev, quality: e.target.value, brand: e.target.value }))}
+                      style={formInputStyle}
+                    >
+                      {sheetQualities.map(q => (
+                        <option key={q} value={q}>{q}</option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mobile-label">Brand *</label>
+                    <select
+                      value={newItem.brand}
+                      onChange={(e) => setNewItem(prev => ({ ...prev, brand: e.target.value }))}
+                      style={formInputStyle}
+                    >
+                      {brands.map(brand => (
+                        <option key={brand} value={brand}>{brand}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 
-                <select style={selectInputStyle}
-                  value={cameraTimeSlots[camera] || 'Half Day'}
-                  onChange={(e) => handleCameraTimeSlotChange(camera, e.target.value)}
-                >
-                  {timeSlots.map(slot => (
-                    <option key={slot} value={slot}>{slot}</option>
-                  ))}
-                </select>
-                
-                <input
-                  type="number"
-                  value={pricingData.cameras[camera]?.actualPrice || 0}
-                  onChange={(e) => handlePriceUpdate(camera, 'actualPrice', e.target.value)}
-                  style={priceInputStyleActual}
-                  placeholder="0"
-                  min="0"
-                />
-                
-                <input
-                  type="number"
-                  value={pricingData.cameras[camera]?.customerPrice || 0}
-                  onChange={(e) => handlePriceUpdate(camera, 'customerPrice', e.target.value)}
-                  style={priceInputStyleCustomer}
-                  placeholder="0"
-                  min="0"
-                />
-                
-                {/* Mobile View */}
-                <div className="mobile-view" style={{
-                  display: 'none',
-                  gridColumn: '1 / -1',
-                  padding: '12px',
-                  background: '#f8fafc',
-                  borderRadius: '8px',
-                  marginTop: '8px'
+                <div>
+                  <label className="mobile-label">Model/Description {newItem.category !== 'Sheets' && '*'}</label>
+                  <input
+                    placeholder={newItem.category === 'Sheets' ? 'Auto-generated' : 'Model/Description'}
+                    value={newItem.category === 'Sheets' ? `${newItem.quality} Quality` : newItem.model}
+                    onChange={(e) => setNewItem(prev => ({ ...prev, model: e.target.value }))}
+                    style={{
+                      ...formInputStyle,
+                      background: newItem.category === 'Sheets' ? '#e5e7eb' : '#fafbfc',
+                      cursor: newItem.category === 'Sheets' ? 'not-allowed' : 'text'
+                    }}
+                    readOnly={newItem.category === 'Sheets'}
+                  />
+                </div>
+              </div>
+
+              {/* ✅ For Sheets: Only show "Price Per Sheet" section */}
+              {newItem.category === 'Sheets' ? (
+                <div style={{ 
+                  background: '#e0f2fe', 
+                  padding: '16px', 
+                  borderRadius: '10px',
+                  border: '2px solid #0ea5e9'
                 }}>
-                  <div className="camera-info-mobile">
+                  <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '700', color: '#075985' }}>
+                    📄 Price Per Sheet
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
-                      <div className="mobile-label">Brand/Model</div>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                        <select style={{...selectInputStyle, flex: 1}}
-                          value={cameraBrands[camera] || 'Sony'}
-                          onChange={(e) => handleCameraModelChange(camera, e.target.value, cameraModels[camera])}
-                        >
-                          <option>Sony</option>
-                          <option>Canon</option>
-                        </select>
-                        <select style={{...selectInputStyle, flex: 1}}
-                          value={cameraModels[camera] || ''}
-                          onChange={(e) => handleCameraModelChange(camera, cameraBrands[camera], e.target.value)}
-                        >
-                          <option value="">Model</option>
-                          {cameraConfigurations[camera][cameraBrands[camera] || 'Sony'].map((model) => (
-                            <option key={model} value={model}>{model}</option>
-                          ))}
-                        </select>
-                      </div>
+                      <label className="mobile-label">Actual Price (Per Sheet)</label>
+                      <input
+                        type="number"
+                        placeholder="Your cost per sheet"
+                        value={newItem.actualPriceHalfDay}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, actualPriceHalfDay: parseInt(e.target.value) || 0 }))}
+                        style={{ ...formInputStyle, background: '#fef3c7' }}
+                        min="0"
+                      />
                     </div>
                     
                     <div>
-                      <div className="mobile-label">Time Slot</div>
-                      <select style={{...selectInputStyle, width: '100%'}}
-                        value={cameraTimeSlots[camera] || 'Half Day'}
-                        onChange={(e) => handleCameraTimeSlotChange(camera, e.target.value)}
-                      >
-                        {timeSlots.map(slot => (
-                          <option key={slot} value={slot}>{slot}</option>
-                        ))}
-                      </select>
+                      <label className="mobile-label">Customer Price (Per Sheet)</label>
+                      <input
+                        type="number"
+                        placeholder="Customer price per sheet"
+                        value={newItem.customerPriceHalfDay}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, customerPriceHalfDay: parseInt(e.target.value) || 0 }))}
+                        style={{ ...formInputStyle, background: '#d1fae5' }}
+                        min="0"
+                      />
                     </div>
-                    
-                    <div className="price-inputs-mobile">
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* ✅ Half Day Prices */}
+                  <div style={{ 
+                    background: '#eff6ff', 
+                    padding: '16px', 
+                    borderRadius: '10px',
+                    border: '2px solid #3b82f6'
+                  }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '700', color: '#1e40af' }}>
+                      🌅 Half Day Pricing
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       <div>
-                        <div className="mobile-label">Actual Price</div>
+                        <label className="mobile-label">Actual Price (Half Day)</label>
                         <input
                           type="number"
-                          value={pricingData.cameras[camera]?.actualPrice || 0}
-                          onChange={(e) => handlePriceUpdate(camera, 'actualPrice', e.target.value)}
-                          style={{...priceInputStyleActual, width: '100%'}}
-                          placeholder="0"
+                          placeholder="Actual Price"
+                          value={newItem.actualPriceHalfDay}
+                          onChange={(e) => setNewItem(prev => ({ ...prev, actualPriceHalfDay: parseInt(e.target.value) || 0 }))}
+                          style={{ ...formInputStyle, background: '#fef3c7' }}
                           min="0"
                         />
                       </div>
                       
                       <div>
-                        <div className="mobile-label">Customer Price</div>
+                        <label className="mobile-label">Customer Price (Half Day)</label>
                         <input
                           type="number"
-                          value={pricingData.cameras[camera]?.customerPrice || 0}
-                          onChange={(e) => handlePriceUpdate(camera, 'customerPrice', e.target.value)}
-                          style={{...priceInputStyleCustomer, width: '100%'}}
-                          placeholder="0"
+                          placeholder="Customer Price"
+                          value={newItem.customerPriceHalfDay}
+                          onChange={(e) => setNewItem(prev => ({ ...prev, customerPriceHalfDay: parseInt(e.target.value) || 0 }))}
+                          style={{ ...formInputStyle, background: '#d1fae5' }}
                           min="0"
                         />
                       </div>
                     </div>
                   </div>
+
+                  {/* ✅ Full Day Prices */}
+                  <div style={{ 
+                    background: '#fef3c7', 
+                    padding: '16px', 
+                    borderRadius: '10px',
+                    border: '2px solid #f59e0b'
+                  }}>
+                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '700', color: '#92400e' }}>
+                      ☀️ Full Day Pricing
+                    </h4>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label className="mobile-label">Actual Price (Full Day)</label>
+                        <input
+                          type="number"
+                          placeholder="Actual Price"
+                          value={newItem.actualPriceFullDay}
+                          onChange={(e) => setNewItem(prev => ({ ...prev, actualPriceFullDay: parseInt(e.target.value) || 0 }))}
+                          style={{ ...formInputStyle, background: '#fef3c7' }}
+                          min="0"
+                        />
+                      </div>
+                      
+                      <div>
+                        <label className="mobile-label">Customer Price (Full Day)</label>
+                        <input
+                          type="number"
+                          placeholder="Customer Price"
+                          value={newItem.customerPriceFullDay}
+                          onChange={(e) => setNewItem(prev => ({ ...prev, customerPriceFullDay: parseInt(e.target.value) || 0 }))}
+                          style={{ ...formInputStyle, background: '#d1fae5' }}
+                          min="0"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              <button onClick={addItem}
+                style={{
+                  padding: '14px 20px',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+                  minHeight: '48px'
+                }}
+              >
+                ➕ Add Item
+              </button>
+            </div>
+          </div>
+          
+          {/* Desktop Header - Updated for Sheets */}
+          <div className="grid-header" style={{
+            display: 'grid', 
+            gridTemplateColumns: '0.7fr 0.8fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 80px', 
+            gap: '10px',
+            padding: '16px 24px', 
+            background: '#f8fafc', 
+            fontWeight: '600', 
+            color: '#1e293b', 
+            fontSize: '12px',
+            borderBottom: '2px solid #e2e8f0'
+          }}>
+            <div>Category</div>
+            <div>Brand</div>
+            <div>Model</div>
+            <div style={{ textAlign: 'center' }}>Actual ₹<br/>(Half/Per)</div>
+            <div style={{ textAlign: 'center' }}>Customer ₹<br/>(Half/Per)</div>
+            <div style={{ textAlign: 'center' }}>Actual ₹<br/>(Full)</div>
+            <div style={{ textAlign: 'center' }}>Customer ₹<br/>(Full)</div>
+            <div style={{ textAlign: 'center' }}>Delete</div>
+          </div>
+
+          <div style={{ padding: '16px 24px 24px' }}>
+            {items.map((item) => (
+              <div key={item.id} className="grid-row" style={{
+                display: 'grid', 
+                gridTemplateColumns: '0.7fr 0.8fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 80px', 
+                gap: '10px', 
+                alignItems: 'center',
+                padding: '12px 0', 
+                borderBottom: '1px solid #f1f5f9'
+              }}>
+                {/* Category */}
+                <div>
+                  <label className="mobile-label">Category</label>
+                  <span className="category-badge">{item.category}</span>
+                </div>
+                
+                {/* Brand */}
+                <div>
+                  <label className="mobile-label">Brand</label>
+                  {item.category === 'Sheets' ? (
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#059669' }}>
+                      {item.quality || item.brand}
+                    </span>
+                  ) : (
+                    <select
+                      style={selectInputStyle}
+                      value={item.brand}
+                      onChange={(e) => updateItem(item.id, 'brand', e.target.value)}
+                    >
+                      {brands.map(brand => (
+                        <option key={brand} value={brand}>{brand}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                
+                {/* Model */}
+                <div>
+                  <label className="mobile-label">Model/Description</label>
+                  <input
+                    style={formInputStyle}
+                    value={item.model}
+                    onChange={(e) => updateItem(item.id, 'model', e.target.value)}
+                    placeholder="Model/Description"
+                  />
+                </div>
+                
+                {/* Actual Price Half Day / Per Sheet */}
+                <div>
+                  <label className="mobile-label">
+                    Actual Price ({item.category === 'Sheets' ? 'Per Sheet' : 'Half Day'})
+                  </label>
+                  <input
+                    type="number"
+                    value={item.actualPriceHalfDay || 0}
+                    onChange={(e) => updateItem(item.id, 'actualPriceHalfDay', e.target.value)}
+                    style={priceInputStyleActual}
+                    placeholder="0"
+                    min="0"
+                  />
+                </div>
+                
+                {/* Customer Price Half Day / Per Sheet */}
+                <div>
+                  <label className="mobile-label">
+                    Customer Price ({item.category === 'Sheets' ? 'Per Sheet' : 'Half Day'})
+                  </label>
+                  <input
+                    type="number"
+                    value={item.customerPriceHalfDay || 0}
+                    onChange={(e) => updateItem(item.id, 'customerPriceHalfDay', e.target.value)}
+                    style={priceInputStyleCustomer}
+                    placeholder="0"
+                    min="0"
+                  />
+                </div>
+
+                {/* Actual Price Full Day - N/A for Sheets */}
+                <div>
+                  <label className="mobile-label">Actual Price (Full Day)</label>
+                  {item.category === 'Sheets' ? (
+                    <div style={{ 
+                      padding: '12px',
+                      background: '#f3f4f6',
+                      borderRadius: '10px',
+                      textAlign: 'center',
+                      color: '#6b7280',
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}>
+                      N/A
+                    </div>
+                  ) : (
+                    <input
+                      type="number"
+                      value={item.actualPriceFullDay || 0}
+                      onChange={(e) => updateItem(item.id, 'actualPriceFullDay', e.target.value)}
+                      style={priceInputStyleActual}
+                      placeholder="0"
+                      min="0"
+                    />
+                  )}
+                </div>
+
+                {/* Customer Price Full Day - N/A for Sheets */}
+                <div>
+                  <label className="mobile-label">Customer Price (Full Day)</label>
+                  {item.category === 'Sheets' ? (
+                    <div style={{ 
+                      padding: '12px',
+                      background: '#f3f4f6',
+                      borderRadius: '10px',
+                      textAlign: 'center',
+                      color: '#6b7280',
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}>
+                      N/A
+                    </div>
+                  ) : (
+                    <input
+                      type="number"
+                      value={item.customerPriceFullDay || 0}
+                      onChange={(e) => updateItem(item.id, 'customerPriceFullDay', e.target.value)}
+                      style={priceInputStyleCustomer}
+                      placeholder="0"
+                      min="0"
+                    />
+                  )}
+                </div>
+
+                {/* Delete Button */}
+                <div>
+                  <label className="mobile-label">Delete</label>
+                  <button onClick={() => deleteItem(item.id)}
+                    style={{
+                      padding: '10px',
+                      background: '#fee2e2',
+                      border: '1px solid #ef4444',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      fontSize: '16px',
+                      width: '100%',
+                      transition: 'all 0.2s'
+                    }}
+                    title="Delete item"
+                  >
+                    🗑️
+                  </button>
                 </div>
               </div>
             ))}
           </div>
 
-          {/* Submit Button Section */}
           <div style={{
             padding: '24px',
             background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
             borderTop: '2px solid #10b981',
             display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
+            flexWrap: 'wrap',
+            gap: '12px',
+            alignItems: 'center',
+            justifyContent: 'space-between'
           }}>
-            <div style={{
-              display: 'grid', 
-              gridTemplateColumns: '1fr auto', 
-              gap: '12px', 
-              alignItems: 'center'
-            }}>
-              <div style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>
-                TOTAL: ₹{calculateQuotationTotal().toLocaleString()}
-              </div>
-              
+            <div style={{ fontSize: '16px', fontWeight: '700', color: '#1f2937' }}>
+              {items.length} Items Listed
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
               <button onClick={submitQuotationPrices}
                 style={{
                   padding: '12px 24px',
@@ -712,13 +997,31 @@ yPosition += 12
                   whiteSpace: 'nowrap'
                 }}
               >
-                📤 Submit 
+                📤 Submit
+              </button>
+
+              <button onClick={saveItemsToDb}
+                style={{
+                  padding: '12px 24px',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontWeight: '700',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(139, 92, 246, 0.3)',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                💾 Save to DB
               </button>
             </div>
           </div>
         </div>
       ) : (
         <div className="pricing-card">
+          {/* B2B SECTION */}
           <div style={{
             display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center',
             padding: '20px 24px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -731,7 +1034,7 @@ yPosition += 12
           </div>
 
           <div className="b2b-form-container">
-            <div style={{ display: 'grid', gap: '16px' }}>
+            <div style={{ display: 'grid', gap: '16px', paddingTop: '24px' }}>
               <div style={{ display: 'grid', gap: '12px' }}>
                 <input placeholder="🏢 Studio Name *" 
                   value={b2bForm.studioName}
@@ -748,53 +1051,56 @@ yPosition += 12
                 onChange={(e) => handleB2bInputChange('phoneNumber', e.target.value)}
                 style={formInputStyle} />
 
-              <div style={{ display: 'grid', gap: '12px' }}>
-                <div style={{ 
-                  padding: '16px', background: '#f8fafc', borderRadius: '10px', 
-                  border: '1px solid #e2e8f0'
-                }}>
-                  <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '10px', color: '#1f2937' }}>
-                    📷 Camera Selection
-                  </div>
-                  <select value={b2bForm.cameraType}
-                    onChange={(e) => handleB2bCameraTypeChange(e.target.value)}
-                    style={formInputStyle}
-                  >
-                    <option value="">Select Camera Type</option>
-                    {cameraOptions.map(camera => (
-                      <option key={camera} value={camera}>{camera}</option>
-                    ))}
-                  </select>
-                  
-                  <div style={{ 
-                    display: 'grid', 
-                    gridTemplateColumns: '1fr 1fr', 
-                    gap: '12px', 
-                    marginTop: '10px'
-                  }}>
-                    <select value={b2bForm.cameraBrand}
-                      onChange={(e) => handleB2bInputChange('cameraBrand', e.target.value)}
-                      style={formInputStyle}
-                      disabled={!b2bForm.cameraType}
-                    >
-                      <option value="">Brand</option>
-                      <option>Sony</option>
-                      <option>Canon</option>
-                    </select>
-                    
-                    {b2bForm.cameraType && (
-                      <select value={b2bForm.cameraModel}
-                        onChange={(e) => handleB2bInputChange('cameraModel', e.target.value)}
-                        style={formInputStyle}
-                      >
-                        <option value="">Model</option>
-                        {cameraConfigurations[b2bForm.cameraType]?.[b2bForm.cameraBrand || 'Sony']?.map((model) => (
-                          <option key={model} value={model}>{model}</option>
-                        ))}
-                      </select>
-                    )}
-                  </div>
+              <div style={{ 
+                padding: '20px', background: '#f8fafc', borderRadius: '10px', 
+                border: '1px solid #e2e8f0'
+              }}>
+                <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '16px', color: '#1f2937' }}>
+                  📦 Select Equipment
                 </div>
+                
+                {categories.map(category => {
+                  const categoryItems = items.filter(item => item.category === category)
+                  if (categoryItems.length === 0) return null
+                  
+                  return (
+                    <div key={category} style={{ marginBottom: '16px' }}>
+                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#64748b', marginBottom: '8px' }}>
+                        {category}
+                      </div>
+                      <div style={{ display: 'grid', gap: '8px' }}>
+                        {categoryItems.map(item => (
+                          <label key={item.id} style={{ 
+                            display: 'flex', alignItems: 'center', gap: '10px',
+                            padding: '10px', background: 'white', borderRadius: '6px',
+                            border: '1px solid #e2e8f0', cursor: 'pointer'
+                          }}>
+                            <input
+                              type="checkbox"
+                              onChange={(e) => {
+                                const itemName = item.category === 'Sheets' 
+                                  ? `${item.category} - ${item.brand} ${item.model} (₹${item.customerPriceHalfDay} per sheet)`
+                                  : `${item.category} - ${item.brand} ${item.model} (Half: ₹${item.customerPriceHalfDay}, Full: ₹${item.customerPriceFullDay})`
+                                if (e.target.checked) {
+                                  handleB2bInputChange('selectedItems', [...b2bForm.selectedItems, itemName])
+                                } else {
+                                  handleB2bInputChange('selectedItems', b2bForm.selectedItems.filter(i => i !== itemName))
+                                }
+                              }}
+                              style={{ width: '18px', height: '18px' }}
+                            />
+                            <span style={{ fontSize: '13px', fontWeight: '500' }}>
+                              {item.category === 'Sheets' 
+                                ? `${item.brand} ${item.model} - ₹${item.customerPriceHalfDay.toLocaleString()} per sheet`
+                                : `${item.brand} ${item.model} - Half: ₹${item.customerPriceHalfDay.toLocaleString()} | Full: ₹${item.customerPriceFullDay.toLocaleString()}`
+                              }
+                            </span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
 
               <input placeholder="📍 Event Location *" 
@@ -804,116 +1110,45 @@ yPosition += 12
 
               <select value={b2bForm.timeSlot}
                 onChange={(e) => handleB2bInputChange('timeSlot', e.target.value)}
-                style={formInputStyle}
-              >
-                <option value="">Select Duration</option>
-                <option>Half Day</option>
-                <option>Full Day</option>
+                style={formInputStyle}>
+                <option value="Half Day">⏰ Half Day</option>
+                <option value="Full Day">☀️ Full Day</option>
               </select>
 
-              <div style={{
-                background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
-                padding: '24px', borderRadius: '12px', border: '2px solid #0ea5e9'
-              }}>
-                <h5 style={{ 
-                  margin: '0 0 20px 0', fontSize: '16px', fontWeight: '700', 
-                  color: '#0369a1', textAlign: 'center'
-                }}>
-                  💰 Payment Details
-                </h5>
-                <div style={{ display: 'grid', gap: '16px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px', color: '#1e40af' }}>
-                      💎 Total Amount *
-                    </label>
-                    <input type="number" 
-                      value={b2bForm.totalPrice}
-                      onChange={(e) => handleB2bInputChange('totalPrice', e.target.value)}
-                      placeholder="Enter total amount"
-                      min="0"
-                      style={{ 
-                        ...formInputStyle, 
-                        background: '#dbeafe', 
-                        fontWeight: '700', 
-                        fontSize: '15px',
-                        borderColor: '#3b82f6'
-                      }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', marginBottom: '8px', color: '#1e40af' }}>
-                      💳 Advance Payment
-                    </label>
-                    <input type="number" 
-                      value={b2bForm.advance}
-                      onChange={(e) => handleB2bInputChange('advance', e.target.value)}
-                      placeholder="Enter advance"
-                      min="0"
-                      style={{ ...formInputStyle, background: '#fef3c7', fontWeight: '600', fontSize: '15px' }} />
-                  </div>
-                  <div style={{ 
-                    padding: '14px', background: '#ecfdf5', borderRadius: '10px', 
-                    borderLeft: '4px solid #10b981', textAlign: 'center'
-                  }}>
-                    <label style={{ fontSize: '15px', fontWeight: '700', color: '#065f46' }}>
-                      💰 Balance: ₹{b2bForm.balance.toLocaleString()}
-                    </label>
-                  </div>
-                </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                <input type="number" placeholder="💰 Total Amount *"
+                  value={b2bForm.totalPrice || ''}
+                  onChange={(e) => handleB2bInputChange('totalPrice', e.target.value)}
+                  style={{ ...formInputStyle, background: '#fef3c7', fontWeight: '700' }} />
+                <input type="number" placeholder="💵 Advance Paid"
+                  value={b2bForm.advance || ''}
+                  onChange={(e) => handleB2bInputChange('advance', e.target.value)}
+                  style={{ ...formInputStyle, background: '#d1fae5', fontWeight: '700' }} />
+                <input type="number" placeholder="🔄 Balance"
+                  value={b2bForm.balance}
+                  readOnly
+                  style={{ ...formInputStyle, background: '#fee2e2', fontWeight: '700', cursor: 'not-allowed' }} />
               </div>
 
               <button onClick={downloadB2BPdf}
                 style={{
-                  padding: '16px', 
-                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  color: 'white', border: 'none', borderRadius: '12px', 
-                  fontWeight: '700', fontSize: '16px', cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)',
-                  marginTop: '8px'
+                  padding: '16px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontWeight: '700',
+                  fontSize: '16px',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
                 }}
               >
-                📥 Download B2B Order PDF
+                📄 Generate & Download PDF
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Add CSS for mobile responsiveness */}
-      <style jsx>{`
-        @media (max-width: 768px) {
-          .grid-header {
-            display: none !important;
-          }
-          
-          .grid-row {
-            grid-template-columns: 1fr !important;
-            padding: 16px 0 !important;
-            border-bottom: 2px solid #f1f5f9 !important;
-          }
-          
-          .grid-row > div:first-child {
-            font-size: 16px !important;
-            margin-bottom: 12px !important;
-          }
-          
-          .mobile-view {
-            display: block !important;
-          }
-          
-          .grid-row > div:not(:first-child):not(.mobile-view) {
-            display: none !important;
-          }
-          
-          .submit-message {
-            animation: fadeIn 0.3s ease-in;
-          }
-        }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
     </div>
   )
 }

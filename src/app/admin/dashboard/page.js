@@ -67,19 +67,26 @@ export default function AdminDashboard() {
   const [selectedAdvanceCount, setSelectedAdvanceCount] = useState(0)
   
   // Quotation State
-  const [quotation, setQuotation] = useState({
-    firstName: "",
-    lastName: "",
-    customerPhone: "",
-    customerEmail: "",
-    selectedEvents: [],
-    eventDates: {},
-    notes: "",
-    eventServices: {},
-    serviceAmounts: {},
-    additionalAmount: "",
-    discount: "",
-  })
+  // Quotation State
+const [quotation, setQuotation] = useState({
+  firstName: "",
+  lastName: "",
+  customerPhone: "",
+  customerEmail: "",
+  location: "", // ✅ ADD THIS
+  selectedEvents: [],
+  eventDates: {},
+  notes: "",
+  eventServices: {},
+  serviceAmounts: {},
+  serviceTimes: {}, // ✅ ADD THIS
+  selectedEquipment: {}, // ✅ ADD THIS - Required for equipment selection
+  sheetsCount: 0, // ✅ ADD THIS
+  sheetsCustomerPrice: 0, // ✅ ADD THIS
+  additionalAmount: "",
+  discount: "",
+})
+
   const [activeRequirementTab, setActiveRequirementTab] = useState("")
 
   const showToast = (message, type = "success") => {
