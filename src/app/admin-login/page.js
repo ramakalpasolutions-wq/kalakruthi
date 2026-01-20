@@ -43,7 +43,7 @@ export default function AdminLogin() {
 
     setTimeout(() => {
       if (
-        credentials.username.toLowerCase().trim() === "kala kruthi" &&
+        credentials.username.toLowerCase().trim() === "kalakruthi" &&
         credentials.password === "KK@2025"
       ) {
         localStorage.setItem("isAdmin", "true");
