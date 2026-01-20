@@ -1,4 +1,4 @@
-// QuotationPDF.js — WITHOUT COMPANY ADDRESS
+// QuotationPDF.js — WITH QUANTITY SUPPORT (FIXED IMPORT)
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 
@@ -37,6 +37,7 @@ export const generateQuotationPDF = (
 
   const itemsByEvent = {}
 
+  // ✅ UPDATED: Extract equipment with quantity
   if (quotation.selectedEquipment) {
     Object.keys(quotation.selectedEquipment).forEach((eventType) => {
       const eventEquipment = quotation.selectedEquipment[eventType] || []
@@ -44,13 +45,23 @@ export const generateQuotationPDF = (
       const eventItems = []
       eventEquipment.forEach((eq) => {
         if (eq.selected && eq.equipmentId && eq.equipmentId !== "Not Selected") {
-          equipmentActualTotal += eq.actualPrice || 0
-          equipmentCustomerTotal += eq.customerPrice || 0
+          const quantity = eq.quantity || 1
+          const unitActualPrice = eq.unitActualPrice || 0
+          const unitCustomerPrice = eq.unitCustomerPrice || 0
+          
+          const totalActual = unitActualPrice * quantity
+          const totalCustomer = unitCustomerPrice * quantity
+
+          equipmentActualTotal += totalActual
+          equipmentCustomerTotal += totalCustomer
 
           eventItems.push({
             name: `${eq.category} - ${eq.timeSlot || "N/A"}`,
-            actualPrice: eq.actualPrice || 0,
-            customerPrice: eq.customerPrice || 0,
+            quantity: quantity,
+            unitActualPrice: unitActualPrice,
+            unitCustomerPrice: unitCustomerPrice,
+            totalActual: totalActual,
+            totalCustomer: totalCustomer,
           })
         }
       })
@@ -126,6 +137,7 @@ export const generateQuotationPDF = (
   // EVENT TABLE
   let contentY = CUSTOMER_BOX_Y + 35
 
+  // ✅ FIXED: Use autoTable function directly
   autoTable(doc, {
     startY: contentY,
     head: [["Event", "Schedule"]],
@@ -195,22 +207,30 @@ export const generateQuotationPDF = (
 
     contentY += 8
 
+    // ✅ Table headers with Quantity column
     const tableHeaders = showPrices
-      ? [["Item", "Actual (Rs.)", "Customer (Rs.)"]]
-      : [["Item", "Price (Rs.)"]]
+      ? [["Item", "Qty", "Actual (₹)", "Customer (₹)"]]
+      : [["Item", "Qty", "Price (₹)"]]
 
+    // ✅ Table body with quantity and total prices
     const tableBody = eventItems.map((item) => {
       if (showPrices) {
         return [
           item.name,
-          item.actualPrice.toLocaleString("en-IN"),
-          item.customerPrice.toLocaleString("en-IN"),
+          item.quantity.toString(),
+          `${item.unitActualPrice.toLocaleString("en-IN")} × ${item.quantity} = ${item.totalActual.toLocaleString("en-IN")}`,
+          `${item.unitCustomerPrice.toLocaleString("en-IN")} × ${item.quantity} = ${item.totalCustomer.toLocaleString("en-IN")}`,
         ]
       } else {
-        return [item.name, item.customerPrice.toLocaleString("en-IN")]
+        return [
+          item.name,
+          item.quantity.toString(),
+          `${item.unitCustomerPrice.toLocaleString("en-IN")} × ${item.quantity} = ${item.totalCustomer.toLocaleString("en-IN")}`,
+        ]
       }
     })
 
+    // ✅ FIXED: Use autoTable function directly
     autoTable(doc, {
       startY: contentY,
       head: tableHeaders,
@@ -224,18 +244,20 @@ export const generateQuotationPDF = (
         halign: "center",
       },
       bodyStyles: {
-        fontSize: 8,
+        fontSize: 7.5,
         cellPadding: 2.5,
       },
       columnStyles: showPrices
         ? {
-            0: { cellWidth: 90, halign: "left" },
-            1: { cellWidth: 40, halign: "right" },
-            2: { cellWidth: 40, halign: "right" },
+            0: { cellWidth: 60, halign: "left" },
+            1: { cellWidth: 15, halign: "center" },
+            2: { cellWidth: 50, halign: "right" },
+            3: { cellWidth: 50, halign: "right" },
           }
         : {
-            0: { cellWidth: 130, halign: "left" },
-            1: { cellWidth: 40, halign: "right" },
+            0: { cellWidth: 90, halign: "left" },
+            1: { cellWidth: 20, halign: "center" },
+            2: { cellWidth: 60, halign: "right" },
           },
       margin: { left: SAFE_MARGIN, right: SAFE_MARGIN },
       pageBreak: "avoid",
@@ -266,24 +288,27 @@ export const generateQuotationPDF = (
     contentY += 10
 
     const sheetsTableHeaders = showPrices
-      ? [["Description", "Actual (Rs.)", "Customer (Rs.)"]]
-      : [["Description", "Price (Rs.)"]]
+      ? [["Description", "Qty", "Actual (₹)", "Customer (₹)"]]
+      : [["Description", "Qty", "Price (₹)"]]
 
     const sheetsTableBody = showPrices
       ? [
           [
-            `${sheetsQuantity} pcs x Rs.${sheetsPricePerSheet.toLocaleString("en-IN")}`,
-            sheetsActualTotal.toLocaleString("en-IN"),
-            sheetsCustomerTotal.toLocaleString("en-IN"),
+            "Photo Sheets",
+            sheetsQuantity.toString(),
+            `${sheetsActualPrice.toLocaleString("en-IN")} × ${sheetsQuantity} = ${sheetsActualTotal.toLocaleString("en-IN")}`,
+            `${sheetsPricePerSheet.toLocaleString("en-IN")} × ${sheetsQuantity} = ${sheetsCustomerTotal.toLocaleString("en-IN")}`,
           ],
         ]
       : [
           [
-            `${sheetsQuantity} pcs x Rs.${sheetsPricePerSheet.toLocaleString("en-IN")}`,
-            sheetsCustomerTotal.toLocaleString("en-IN"),
+            "Photo Sheets",
+            sheetsQuantity.toString(),
+            `${sheetsPricePerSheet.toLocaleString("en-IN")} × ${sheetsQuantity} = ${sheetsCustomerTotal.toLocaleString("en-IN")}`,
           ],
         ]
 
+    // ✅ FIXED: Use autoTable function directly
     autoTable(doc, {
       startY: contentY,
       head: sheetsTableHeaders,
@@ -297,18 +322,20 @@ export const generateQuotationPDF = (
         halign: "center",
       },
       bodyStyles: {
-        fontSize: 8,
+        fontSize: 7.5,
         cellPadding: 2.5,
       },
       columnStyles: showPrices
         ? {
-            0: { cellWidth: 90, halign: "left" },
-            1: { cellWidth: 40, halign: "right" },
-            2: { cellWidth: 40, halign: "right" },
+            0: { cellWidth: 60, halign: "left" },
+            1: { cellWidth: 15, halign: "center" },
+            2: { cellWidth: 50, halign: "right" },
+            3: { cellWidth: 50, halign: "right" },
           }
         : {
-            0: { cellWidth: 130, halign: "left" },
-            1: { cellWidth: 40, halign: "right" },
+            0: { cellWidth: 90, halign: "left" },
+            1: { cellWidth: 20, halign: "center" },
+            2: { cellWidth: 60, halign: "right" },
           },
       margin: { left: SAFE_MARGIN, right: SAFE_MARGIN },
       pageBreak: "avoid",
@@ -350,7 +377,7 @@ export const generateQuotationPDF = (
     doc.setTextColor(220, 38, 38)
     doc.text("Actual Price Total:", SAFE_MARGIN + 3, contentY)
     doc.text(
-      `Rs. ${actualGrandTotal.toLocaleString("en-IN")}`,
+      `₹ ${actualGrandTotal.toLocaleString("en-IN")}`,
       PRICE_RIGHT_X,
       contentY,
       { align: "right" }
@@ -364,7 +391,7 @@ export const generateQuotationPDF = (
   doc.setFont("helvetica", "bold")
   doc.text("Customer Price Total:", SAFE_MARGIN + 3, contentY)
   doc.text(
-    `Rs. ${customerGrandTotal.toLocaleString("en-IN")}`,
+    `₹ ${customerGrandTotal.toLocaleString("en-IN")}`,
     PRICE_RIGHT_X,
     contentY,
     { align: "right" }
@@ -376,7 +403,7 @@ export const generateQuotationPDF = (
     doc.setTextColor(220, 38, 38)
     doc.text(`Discount (${discountPercent}%):`, SAFE_MARGIN + 3, contentY)
     doc.text(
-      `-Rs. ${discountAmount.toLocaleString("en-IN")}`,
+      `-₹ ${discountAmount.toLocaleString("en-IN")}`,
       PRICE_RIGHT_X,
       contentY,
       { align: "right" }
@@ -395,13 +422,11 @@ export const generateQuotationPDF = (
   doc.setTextColor(...THEME_COLOR)
   doc.text("FINAL AMOUNT:", SAFE_MARGIN + 3, contentY)
   doc.text(
-    `Rs. ${finalTotal.toLocaleString("en-IN")}`,
+    `₹ ${finalTotal.toLocaleString("en-IN")}`,
     PRICE_RIGHT_X,
     contentY,
     { align: "right" }
   )
-
-  // ✅ REMOVED: Company address section deleted
 
   return doc
 }

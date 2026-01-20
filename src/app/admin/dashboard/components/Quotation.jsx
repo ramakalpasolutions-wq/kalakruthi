@@ -18,7 +18,6 @@ export default function Quotation({
   const scrollRef = useRef(null)
   const [showCustomEventInput, setShowCustomEventInput] = useState(false)
   
-  // ✅ Load equipment from PricingList API
   const [equipmentList, setEquipmentList] = useState([])
   const [loadingEquipment, setLoadingEquipment] = useState(true)
 
@@ -54,40 +53,39 @@ export default function Quotation({
     return !Object.keys(SERVICES_BY_EVENT).includes(eventType)
   }
 
-  // ✅ UPDATED: Calculate total with ACTUAL PRICES included
+  // ✅ UPDATED: Calculate total WITH QUANTITY
   const calculateQuotationTotal = () => {
     let equipmentActualTotal = 0
     let equipmentCustomerTotal = 0
 
-    // Calculate equipment totals (both actual and customer)
     if (quotation.selectedEquipment) {
       Object.keys(quotation.selectedEquipment).forEach(eventType => {
         const eventEquipment = quotation.selectedEquipment[eventType] || []
         eventEquipment.forEach(eq => {
           if (eq.selected && eq.equipmentId && eq.equipmentId !== 'Not Selected') {
-            equipmentActualTotal += eq.actualPrice || 0
-            equipmentCustomerTotal += eq.customerPrice || 0
+            const quantity = eq.quantity || 1
+            const unitActualPrice = eq.unitActualPrice || 0
+            const unitCustomerPrice = eq.unitCustomerPrice || 0
+            
+            equipmentActualTotal += unitActualPrice * quantity
+            equipmentCustomerTotal += unitCustomerPrice * quantity
           }
         })
       })
     }
 
-    // ✅ SHEETS CALCULATION: Quantity × Price per sheet (both actual and customer)
     const sheetsQuantity = parseInt(quotation.sheetsCount) || 0
     const sheetsPricePerSheet = quotation.sheetsPricePerSheet || 0
     const sheetsActualPricePerSheet = quotation.sheetsActualPricePerSheet || 0
     const sheetsCustomerTotal = sheetsQuantity * sheetsPricePerSheet
     const sheetsActualTotal = sheetsQuantity * sheetsActualPricePerSheet
 
-    // ✅ Grand totals (actual + customer)
     const actualGrandTotal = equipmentActualTotal + sheetsActualTotal
     const customerGrandTotal = equipmentCustomerTotal + sheetsCustomerTotal
 
-    // ✅ Discount on customer total only
     const discountPercent = parseFloat(quotation.discount) || 0
     const discountAmount = Math.round((customerGrandTotal * discountPercent) / 100)
 
-    // Final customer total
     const finalTotal = customerGrandTotal - discountAmount
 
     const formatNumber = (num) =>
@@ -142,8 +140,9 @@ export default function Quotation({
           selected: false,
           equipmentId: 'Not Selected',
           timeSlot: 'Not Selected',
-          actualPrice: 0,
-          customerPrice: 0
+          quantity: 1,
+          unitActualPrice: 0,
+          unitCustomerPrice: 0
         }))
         
         return {
@@ -224,8 +223,9 @@ export default function Quotation({
       selected: false,
       equipmentId: 'Not Selected',
       timeSlot: 'Not Selected',
-      actualPrice: 0,
-      customerPrice: 0
+      quantity: 1,
+      unitActualPrice: 0,
+      unitCustomerPrice: 0
     }))
 
     setQuotation((prev) => ({
@@ -259,8 +259,9 @@ export default function Quotation({
             selected: !eq.selected,
             equipmentId: !eq.selected ? eq.equipmentId : 'Not Selected',
             timeSlot: !eq.selected ? eq.timeSlot : 'Not Selected',
-            actualPrice: !eq.selected ? eq.actualPrice : 0,
-            customerPrice: !eq.selected ? eq.customerPrice : 0
+            quantity: !eq.selected ? (eq.quantity || 1) : 1,
+            unitActualPrice: !eq.selected ? eq.unitActualPrice : 0,
+            unitCustomerPrice: !eq.selected ? eq.unitCustomerPrice : 0
           }
         }
         return eq
@@ -285,27 +286,27 @@ export default function Quotation({
         if (idx === categoryIndex) {
           const selectedItem = equipmentList.find(item => item.id === parseInt(eq.equipmentId))
           
-          let actualPrice = eq.actualPrice
-          let customerPrice = eq.customerPrice
+          let unitActualPrice = eq.unitActualPrice
+          let unitCustomerPrice = eq.unitCustomerPrice
           
           if (selectedItem && timeSlot !== 'Not Selected') {
             if (timeSlot === 'Half Day') {
-              actualPrice = selectedItem.actualPriceHalfDay || 0
-              customerPrice = selectedItem.customerPriceHalfDay || 0
+              unitActualPrice = selectedItem.actualPriceHalfDay || 0
+              unitCustomerPrice = selectedItem.customerPriceHalfDay || 0
             } else if (timeSlot === 'Full Day') {
-              actualPrice = selectedItem.actualPriceFullDay || 0
-              customerPrice = selectedItem.customerPriceFullDay || 0
+              unitActualPrice = selectedItem.actualPriceFullDay || 0
+              unitCustomerPrice = selectedItem.customerPriceFullDay || 0
             }
           } else {
-            actualPrice = 0
-            customerPrice = 0
+            unitActualPrice = 0
+            unitCustomerPrice = 0
           }
           
           return { 
             ...eq, 
             timeSlot,
-            actualPrice,
-            customerPrice
+            unitActualPrice,
+            unitCustomerPrice
           }
         }
         return eq
@@ -329,27 +330,27 @@ export default function Quotation({
       const updatedEquipment = currentEventEquipment.map(eq => {
         const selectedItem = equipmentList.find(item => item.id === parseInt(eq.equipmentId))
         
-        let actualPrice = eq.actualPrice
-        let customerPrice = eq.customerPrice
+        let unitActualPrice = eq.unitActualPrice
+        let unitCustomerPrice = eq.unitCustomerPrice
         
         if (selectedItem && globalTimeSlot !== '' && eq.equipmentId !== 'Not Selected') {
           if (globalTimeSlot === 'Half Day') {
-            actualPrice = selectedItem.actualPriceHalfDay || 0
-            customerPrice = selectedItem.customerPriceHalfDay || 0
+            unitActualPrice = selectedItem.actualPriceHalfDay || 0
+            unitCustomerPrice = selectedItem.customerPriceHalfDay || 0
           } else if (globalTimeSlot === 'Full Day') {
-            actualPrice = selectedItem.actualPriceFullDay || 0
-            customerPrice = selectedItem.customerPriceFullDay || 0
+            unitActualPrice = selectedItem.actualPriceFullDay || 0
+            unitCustomerPrice = selectedItem.customerPriceFullDay || 0
           }
         } else if (globalTimeSlot === '') {
-          actualPrice = 0
-          customerPrice = 0
+          unitActualPrice = 0
+          unitCustomerPrice = 0
         }
         
         return {
           ...eq,
           timeSlot: globalTimeSlot || 'Not Selected',
-          actualPrice,
-          customerPrice
+          unitActualPrice,
+          unitCustomerPrice
         }
       })
 
@@ -383,32 +384,55 @@ export default function Quotation({
             return { 
               ...eq, 
               equipmentId: 'Not Selected',
-              actualPrice: 0,
-              customerPrice: 0
+              unitActualPrice: 0,
+              unitCustomerPrice: 0
             }
           } else if (selectedItem) {
             const currentTimeSlot = eq.timeSlot || 'Not Selected'
-            let actualPrice = 0
-            let customerPrice = 0
+            let unitActualPrice = 0
+            let unitCustomerPrice = 0
             
             if (currentTimeSlot === 'Half Day') {
-              actualPrice = selectedItem.actualPriceHalfDay || 0
-              customerPrice = selectedItem.customerPriceHalfDay || 0
+              unitActualPrice = selectedItem.actualPriceHalfDay || 0
+              unitCustomerPrice = selectedItem.customerPriceHalfDay || 0
             } else if (currentTimeSlot === 'Full Day') {
-              actualPrice = selectedItem.actualPriceFullDay || 0
-              customerPrice = selectedItem.customerPriceFullDay || 0
+              unitActualPrice = selectedItem.actualPriceFullDay || 0
+              unitCustomerPrice = selectedItem.customerPriceFullDay || 0
             } else {
-              actualPrice = selectedItem.actualPriceHalfDay || 0
-              customerPrice = selectedItem.customerPriceHalfDay || 0
+              unitActualPrice = selectedItem.actualPriceHalfDay || 0
+              unitCustomerPrice = selectedItem.customerPriceHalfDay || 0
             }
             
             return { 
               ...eq, 
               equipmentId: selectedItem.id,
-              actualPrice,
-              customerPrice
+              unitActualPrice,
+              unitCustomerPrice
             }
           }
+        }
+        return eq
+      })
+
+      return {
+        ...prev,
+        selectedEquipment: {
+          ...currentSelectedEquipment,
+          [eventType]: updatedEquipment
+        }
+      }
+    })
+  }
+
+  // ✅ NEW: Update Actual Price (now editable)
+  const updateActualPrice = (eventType, categoryIndex, price) => {
+    setQuotation(prev => {
+      const currentSelectedEquipment = prev.selectedEquipment || {}
+      const currentEventEquipment = currentSelectedEquipment[eventType] || []
+      
+      const updatedEquipment = currentEventEquipment.map((eq, idx) => {
+        if (idx === categoryIndex) {
+          return { ...eq, unitActualPrice: parseInt(price) || 0 }
         }
         return eq
       })
@@ -430,7 +454,7 @@ export default function Quotation({
       
       const updatedEquipment = currentEventEquipment.map((eq, idx) => {
         if (idx === categoryIndex) {
-          return { ...eq, customerPrice: parseInt(price) || 0 }
+          return { ...eq, unitCustomerPrice: parseInt(price) || 0 }
         }
         return eq
       })
@@ -445,12 +469,36 @@ export default function Quotation({
     })
   }
 
+  // ✅ NEW: Update Quantity
+  const updateQuantity = (eventType, categoryIndex, quantity) => {
+    setQuotation(prev => {
+      const currentSelectedEquipment = prev.selectedEquipment || {}
+      const currentEventEquipment = currentSelectedEquipment[eventType] || []
+      
+      const updatedEquipment = currentEventEquipment.map((eq, idx) => {
+        if (idx === categoryIndex) {
+          return { ...eq, quantity: Math.max(1, parseInt(quantity) || 1) }
+        }
+        return eq
+      })
+
+      return {
+        ...prev,
+        selectedEquipment: {
+          ...currentSelectedEquipment,
+          [eventType]: updatedEquipment
+        }
+      }
+    })
+  }
+
+  // ✅ UPDATED: Category mapping for 4 camera types
   const getCamerasForCategory = (category) => {
     const categoryMap = {
-      'Traditional Photography': 'Camera',
-      'Traditional Videography': 'Camera',
-      'Candid Photography': 'Camera',
-      'Candid Videography': 'Camera',
+      'Traditional Photography': 'Traditional Photo Camera',
+      'Traditional Videography': 'Traditional Video Camera',
+      'Candid Photography': 'Candid Photo Camera',
+      'Candid Videography': 'Candid Video Camera',
       'Drone': 'Drone',
       'Live Streaming': 'Net Live',
       'LED Walls': 'LED Wall'
@@ -588,22 +636,38 @@ export default function Quotation({
 
         .requirement-row {
           display: grid;
-          grid-template-columns: 30px 180px 200px 120px 120px 120px;
+          grid-template-columns: 30px 150px 180px 110px 70px 110px 110px;
           gap: 12px;
           align-items: center;
           padding: 12px 0;
           border-bottom: 1px solid #f3f4f6;
         }
 
+        .equipment-header {
+          display: grid;
+          grid-template-columns: 30px 150px 180px 110px 70px 110px 110px;
+          gap: 12px;
+          padding: 12px 0;
+          border-bottom: 2px solid #e5e7eb;
+          font-weight: 600;
+          font-size: 12px;
+          color: #6b7280;
+          margin-bottom: 8px;
+        }
+
         @media (max-width: 768px) {
+          .equipment-header {
+            display: none !important;
+          }
+          
           .requirement-row {
-            grid-template-columns: 1fr;
-            gap: 8px;
-            padding: 16px;
-            background: #f9fafb;
-            border-radius: 8px;
-            border: 1px solid #e5e7eb;
-            margin-bottom: 12px;
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+            padding: 16px !important;
+            background: #f9fafb !important;
+            border-radius: 8px !important;
+            border: 1px solid #e5e7eb !important;
+            margin-bottom: 12px !important;
           }
 
           .quotation-section {
@@ -629,6 +693,20 @@ export default function Quotation({
           .event-buttons-grid {
             grid-template-columns: repeat(2, 1fr) !important;
             gap: 8px !important;
+          }
+
+          .mobile-label {
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            color: #64748b !important;
+            margin-bottom: 6px !important;
+            display: block !important;
+          }
+        }
+
+        @media (min-width: 769px) {
+          .mobile-label {
+            display: none !important;
           }
         }
       `}</style>
@@ -934,102 +1012,179 @@ export default function Quotation({
                       Loading equipment...
                     </div>
                   ) : (
-                    quotation.selectedEquipment?.[activeRequirementTab]?.map((equipment, idx) => {
-                      const availableCameras = getCamerasForCategory(equipment.category)
-                      
-                      return (
-                        <div key={idx} className="requirement-row">
-                          <input
-                            type="checkbox"
-                            checked={equipment.selected || false}
-                            onChange={() => toggleCategorySelection(activeRequirementTab, idx)}
-                            style={{
-                              width: "20px",
-                              height: "20px",
-                              cursor: "pointer",
-                              accentColor: "#10b981"
-                            }}
-                          />
+                    <>
+                      {/* Desktop Header */}
+                      <div className="equipment-header">
+                        <div></div>
+                        <div>Category</div>
+                        <div>Equipment</div>
+                        <div>Time Slot</div>
+                        <div style={{ textAlign: 'center' }}>Qty</div>
+                        <div style={{ textAlign: 'right' }}>Actual (₹)</div>
+                        <div style={{ textAlign: 'right' }}>Customer (₹)</div>
+                      </div>
 
-                          <div style={{ fontWeight: "600", fontSize: "14px", color: "#1f2937" }}>
-                            {equipment.category}
+                      {quotation.selectedEquipment?.[activeRequirementTab]?.map((equipment, idx) => {
+                        const availableCameras = getCamerasForCategory(equipment.category)
+                        const quantity = equipment.quantity || 1
+                        const totalActual = (equipment.unitActualPrice || 0) * quantity
+                        const totalCustomer = (equipment.unitCustomerPrice || 0) * quantity
+                        
+                        return (
+                          <div key={idx} className="requirement-row">
+                            <input
+                              type="checkbox"
+                              checked={equipment.selected || false}
+                              onChange={() => toggleCategorySelection(activeRequirementTab, idx)}
+                              style={{
+                                width: "20px",
+                                height: "20px",
+                                cursor: "pointer",
+                                accentColor: "#10b981"
+                              }}
+                            />
+
+                            <div>
+                              <label className="mobile-label">Category</label>
+                              <div style={{ fontWeight: "600", fontSize: "14px", color: "#1f2937" }}>
+                                {equipment.category}
+                              </div>
+                            </div>
+
+                            <div>
+                              <label className="mobile-label">Equipment</label>
+                              <select
+                                value={equipment.equipmentId || 'Not Selected'}
+                                disabled={!equipment.selected}
+                                onChange={(e) => updateCameraModel(activeRequirementTab, idx, e.target.value)}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px",
+                                  border: "1px solid #d1d5db",
+                                  borderRadius: "6px",
+                                  fontSize: "13px",
+                                  background: equipment.selected ? "white" : "#f3f4f6",
+                                  cursor: equipment.selected ? "pointer" : "not-allowed",
+                                }}
+                              >
+                                <option value="Not Selected">Not Selected</option>
+                                {availableCameras.map(camera => (
+                                  <option key={camera.id} value={camera.id}>
+                                    {camera.brand} {camera.model}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            <div>
+                              <label className="mobile-label">Time Slot</label>
+                              <select
+                                value={equipment.timeSlot || 'Not Selected'}
+                                disabled={!equipment.selected}
+                                onChange={(e) => updateTimeSlot(activeRequirementTab, idx, e.target.value)}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px",
+                                  border: "2px solid #3b82f6",
+                                  borderRadius: "6px",
+                                  fontSize: "13px",
+                                  background: equipment.selected ? "white" : "#f3f4f6",
+                                  cursor: equipment.selected ? "pointer" : "not-allowed",
+                                  fontWeight: "600"
+                                }}
+                              >
+                                <option value="Not Selected">Not Selected</option>
+                                <option value="Half Day">Half Day</option>
+                                <option value="Full Day">Full Day</option>
+                              </select>
+                            </div>
+
+                            {/* ✅ QUANTITY INPUT */}
+                            <div>
+                              <label className="mobile-label">Quantity</label>
+                              <input
+                                type="number"
+                                min="1"
+                                value={equipment.quantity || 1}
+                                disabled={!equipment.selected}
+                                onChange={(e) => updateQuantity(activeRequirementTab, idx, e.target.value)}
+                                style={{
+                                  width: "100%",
+                                  padding: "8px",
+                                  border: "2px solid #8b5cf6",
+                                  borderRadius: "6px",
+                                  fontSize: "13px",
+                                  textAlign: "center",
+                                  background: equipment.selected ? "#f3e8ff" : "#f3f4f6",
+                                  fontWeight: "600",
+                                  cursor: equipment.selected ? "text" : "not-allowed"
+                                }}
+                              />
+                            </div>
+
+                            {/* ✅ ACTUAL PRICE (EDITABLE, shows total) */}
+                            <div>
+                              <label className="mobile-label">Actual Price (Total)</label>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <input
+                                  type="number"
+                                  value={equipment.unitActualPrice || 0}
+                                  disabled={!equipment.selected}
+                                  onChange={(e) => updateActualPrice(activeRequirementTab, idx, e.target.value)}
+                                  placeholder="Unit price"
+                                  style={{
+                                    width: "100%",
+                                    padding: "8px",
+                                    border: "2px solid #f59e0b",
+                                    borderRadius: "6px",
+                                    fontSize: "13px",
+                                    textAlign: "right",
+                                    background: equipment.selected ? "#fef3c7" : "#f3f4f6",
+                                    fontWeight: "600",
+                                    cursor: equipment.selected ? "text" : "not-allowed"
+                                  }}
+                                />
+                                {quantity > 1 && (
+                                  <div style={{ fontSize: '11px', color: '#f59e0b', textAlign: 'right', fontWeight: '600' }}>
+                                    Total: ₹{totalActual.toLocaleString()}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* ✅ CUSTOMER PRICE (EDITABLE, shows total) */}
+                            <div>
+                              <label className="mobile-label">Customer Price (Total)</label>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <input
+                                  type="number"
+                                  value={equipment.unitCustomerPrice || 0}
+                                  disabled={!equipment.selected}
+                                  onChange={(e) => updateCustomerPrice(activeRequirementTab, idx, e.target.value)}
+                                  placeholder="Unit price"
+                                  style={{
+                                    width: "100%",
+                                    padding: "8px",
+                                    border: "2px solid #10b981",
+                                    borderRadius: "6px",
+                                    fontSize: "13px",
+                                    textAlign: "right",
+                                    background: equipment.selected ? "#d1fae5" : "#f3f4f6",
+                                    fontWeight: "600",
+                                    cursor: equipment.selected ? "text" : "not-allowed"
+                                  }}
+                                />
+                                {quantity > 1 && (
+                                  <div style={{ fontSize: '11px', color: '#10b981', textAlign: 'right', fontWeight: '600' }}>
+                                    Total: ₹{totalCustomer.toLocaleString()}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           </div>
-
-                          <select
-                            value={equipment.equipmentId || 'Not Selected'}
-                            disabled={!equipment.selected}
-                            onChange={(e) => updateCameraModel(activeRequirementTab, idx, e.target.value)}
-                            style={{
-                              padding: "10px",
-                              border: "1px solid #d1d5db",
-                              borderRadius: "6px",
-                              fontSize: "14px",
-                              background: equipment.selected ? "white" : "#f3f4f6",
-                              cursor: equipment.selected ? "pointer" : "not-allowed",
-                            }}
-                          >
-                            <option value="Not Selected">Not Selected</option>
-                            {availableCameras.map(camera => (
-                              <option key={camera.id} value={camera.id}>
-                                {camera.brand} {camera.model}
-                              </option>
-                            ))}
-                          </select>
-
-                          <select
-                            value={equipment.timeSlot || 'Not Selected'}
-                            disabled={!equipment.selected}
-                            onChange={(e) => updateTimeSlot(activeRequirementTab, idx, e.target.value)}
-                            style={{
-                              padding: "10px",
-                              border: "2px solid #3b82f6",
-                              borderRadius: "6px",
-                              fontSize: "14px",
-                              background: equipment.selected ? "white" : "#f3f4f6",
-                              cursor: equipment.selected ? "pointer" : "not-allowed",
-                              fontWeight: "600"
-                            }}
-                          >
-                            <option value="Not Selected">Not Selected</option>
-                            <option value="Half Day">Half Day</option>
-                            <option value="Full Day">Full Day</option>
-                          </select>
-
-                          <input
-                            type="number"
-                            value={equipment.actualPrice || 0}
-                            readOnly
-                            disabled
-                            style={{
-                              padding: "10px",
-                              border: "1px solid #d1d5db",
-                              borderRadius: "6px",
-                              fontSize: "14px",
-                              textAlign: "right",
-                              background: "#f3f4f6",
-                              color: "#6b7280",
-                              cursor: "not-allowed"
-                            }}
-                          />
-
-                          <input
-                            type="number"
-                            value={equipment.customerPrice || 0}
-                            disabled={!equipment.selected}
-                            onChange={(e) => updateCustomerPrice(activeRequirementTab, idx, e.target.value)}
-                            style={{
-                              padding: "10px",
-                              border: "2px solid #10b981",
-                              borderRadius: "6px",
-                              fontSize: "14px",
-                              textAlign: "right",
-                              background: equipment.selected ? "#d1fae5" : "#f3f4f6",
-                              fontWeight: "600"
-                            }}
-                          />
-                        </div>
-                      )
-                    })
+                        )
+                      })}
+                    </>
                   )}
                 </div>
               </>
@@ -1098,7 +1253,7 @@ export default function Quotation({
 
               <div>
                 <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                  Price per Sheet (₹)
+                  Price per Sheet (Customer)
                 </label>
                 <input
                   type="number"
@@ -1112,7 +1267,8 @@ export default function Quotation({
                     borderRadius: "6px",
                     fontSize: "14px",
                     background: "#d1fae5",
-                    fontWeight: "600"
+                    fontWeight: "600",
+                    textAlign: "right"
                   }}
                 />
               </div>
@@ -1120,7 +1276,7 @@ export default function Quotation({
           </div>
         )}
 
-        {/* ✅ UPDATED: QUOTATION SUMMARY WITH ACTUAL PRICES */}
+        {/* DISCOUNT SECTION */}
         {quotation.selectedEvents.length > 0 && (
           <div className="quotation-section" style={{
             background: "white",
@@ -1129,153 +1285,83 @@ export default function Quotation({
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
           }}>
             <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700", color: "#1f2937", marginBottom: "16px" }}>
-              💰 Quotation Summary
+              💰 Discount
             </h3>
-
-            <div style={{ marginBottom: "20px" }}>
-              <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                Discount (%)
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={quotation.discount || ''}
-                onChange={(e) => setQuotation({ ...quotation, discount: e.target.value })}
-                className="form-input"
-                style={{
-                  width: "100%",
-                  maxWidth: "200px",
-                  padding: "10px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "14px",
-                }}
-              />
-            </div>
-
-            <div style={{ 
-              display: "grid", 
-              gridTemplateColumns: "1fr 1fr", 
-              gap: "20px",
-              marginBottom: "16px" 
-            }}>
-              {/* LEFT COLUMN - ACTUAL PRICES */}
-              <div style={{ 
-                background: "#fef2f2", 
-                padding: "16px", 
-                borderRadius: "8px",
-                border: "2px solid #fecaca"
-              }}>
-                <h4 style={{ 
-                  fontSize: "14px", 
-                  fontWeight: "700", 
-                  color: "#dc2626", 
-                  marginBottom: "12px",
-                  borderBottom: "2px solid #dc2626",
-                  paddingBottom: "6px"
-                }}>
-                  📊 Owner View (Actual Prices)
-                </h4>
-                
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                  <span style={{ fontSize: "13px", color: "#4b5563" }}>Equipment Total:</span>
-                  <span style={{ fontSize: "13px", fontWeight: "600", color: "#dc2626" }}>
-                    ₹{totals.equipmentActualTotal || "0"}
-                  </span>
-                </div>
-                
-                {parseInt(quotation.sheetsCount) > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                    <span style={{ fontSize: "13px", color: "#4b5563" }}>Sheets Total:</span>
-                    <span style={{ fontSize: "13px", fontWeight: "600", color: "#dc2626" }}>
-                      ₹{totals.sheetsActualTotal || "0"}
-                    </span>
-                  </div>
-                )}
-                
-                <div style={{ borderTop: "1px solid #fecaca", margin: "8px 0" }}></div>
-                
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                  <span style={{ fontSize: "14px", fontWeight: "700", color: "#991b1b" }}>
-                    Grand Total (Actual):
-                  </span>
-                  <span style={{ fontSize: "16px", fontWeight: "700", color: "#dc2626" }}>
-                    ₹{totals.actualGrandTotal || "0"}
-                  </span>
-                </div>
-              </div>
-
-              {/* RIGHT COLUMN - CUSTOMER PRICES */}
-              <div style={{ 
-                background: "#f0fdf4", 
-                padding: "16px", 
-                borderRadius: "8px",
-                border: "2px solid #86efac"
-              }}>
-                <h4 style={{ 
-                  fontSize: "14px", 
-                  fontWeight: "700", 
-                  color: "#16a34a", 
-                  marginBottom: "12px",
-                  borderBottom: "2px solid #16a34a",
-                  paddingBottom: "6px"
-                }}>
-                  👤 Customer View (Customer Prices)
-                </h4>
-                
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                  <span style={{ fontSize: "13px", color: "#4b5563" }}>Equipment Total:</span>
-                  <span style={{ fontSize: "13px", fontWeight: "600", color: "#16a34a" }}>
-                    ₹{totals.equipmentTotal}
-                  </span>
-                </div>
-                
-                {parseInt(quotation.sheetsCount) > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                    <span style={{ fontSize: "13px", color: "#4b5563" }}>Sheets Total:</span>
-                    <span style={{ fontSize: "13px", fontWeight: "600", color: "#16a34a" }}>
-                      ₹{totals.sheetsTotal}
-                    </span>
-                  </div>
-                )}
-                
-                <div style={{ borderTop: "1px solid #86efac", margin: "8px 0" }}></div>
-                
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                  <span style={{ fontSize: "13px", color: "#4b5563" }}>Subtotal:</span>
-                  <span style={{ fontSize: "13px", fontWeight: "600", color: "#16a34a" }}>
-                    ₹{totals.grandTotal}
-                  </span>
-                </div>
-                
-                {parseFloat(quotation.discount) > 0 && (
-                  <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                    <span style={{ fontSize: "13px", color: "#dc2626" }}>
-                      Discount ({quotation.discount}%):
-                    </span>
-                    <span style={{ fontSize: "13px", fontWeight: "600", color: "#dc2626" }}>
-                      -₹{totals.discountAmount}
-                    </span>
-                  </div>
-                )}
-                
-                <div style={{ borderTop: "2px solid #16a34a", margin: "8px 0" }}></div>
-                
-                <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                  <span style={{ fontSize: "15px", fontWeight: "700", color: "#065f46" }}>
-                    Final Amount:
-                  </span>
-                  <span style={{ fontSize: "18px", fontWeight: "700", color: "#16a34a" }}>
-                    ₹{totals.total}
-                  </span>
-                </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "16px" }}>
+              <div>
+                <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                  Discount Percentage (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={quotation.discount || 0}
+                  onChange={(e) => setQuotation({ ...quotation, discount: e.target.value })}
+                  className="form-input"
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid #d1d5db",
+                    borderRadius: "6px",
+                    fontSize: "14px",
+                  }}
+                />
               </div>
             </div>
           </div>
         )}
 
-        {/* Submit Buttons */}
+        {/* TOTALS SECTION */}
+        {quotation.selectedEvents.length > 0 && (
+          <div className="quotation-section" style={{ background: "#f0fdf4", border: "2px solid #10b981", padding: "24px", borderRadius: "12px" }}>
+            <h3 className="section-title" style={{ color: "#065f46", fontSize: "18px", fontWeight: "700", marginBottom: "16px" }}>
+              💵 Price Summary
+            </h3>
+            <div style={{ display: "grid", gap: "12px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
+                <span style={{ fontWeight: "600", color: "#6b7280" }}>Equipment Total (Actual):</span>
+                <span style={{ fontWeight: "700", color: "#f59e0b" }}>₹ {totals.equipmentActualTotal}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
+                <span style={{ fontWeight: "600", color: "#6b7280" }}>Equipment Total (Customer):</span>
+                <span style={{ fontWeight: "700", color: "#10b981" }}>₹ {totals.equipmentTotal}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
+                <span style={{ fontWeight: "600", color: "#6b7280" }}>Sheets Total (Actual):</span>
+                <span style={{ fontWeight: "700", color: "#f59e0b" }}>₹ {totals.sheetsActualTotal}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
+                <span style={{ fontWeight: "600", color: "#6b7280" }}>Sheets Total (Customer):</span>
+                <span style={{ fontWeight: "700", color: "#10b981" }}>₹ {totals.sheetsTotal}</span>
+              </div>
+              <div style={{ height: "1px", background: "#d1d5db", margin: "8px 0" }}></div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px" }}>
+                <span style={{ fontWeight: "700", color: "#065f46" }}>Grand Total (Actual):</span>
+                <span style={{ fontWeight: "800", color: "#f59e0b", fontSize: "18px" }}>₹ {totals.actualGrandTotal}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px" }}>
+                <span style={{ fontWeight: "700", color: "#065f46" }}>Grand Total (Customer):</span>
+                <span style={{ fontWeight: "800", color: "#10b981", fontSize: "18px" }}>₹ {totals.grandTotal}</span>
+              </div>
+              {totals.discountPercent > 0 && (
+                <>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
+                    <span style={{ fontWeight: "600", color: "#ef4444" }}>Discount ({totals.discountPercent}%):</span>
+                    <span style={{ fontWeight: "700", color: "#ef4444" }}>- ₹ {totals.discountAmount}</span>
+                  </div>
+                  <div style={{ height: "2px", background: "#10b981", margin: "8px 0" }}></div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "18px" }}>
+                    <span style={{ fontWeight: "800", color: "#065f46" }}>Final Total:</span>
+                    <span style={{ fontWeight: "900", color: "#059669", fontSize: "22px" }}>₹ {totals.total}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ACTION BUTTONS */}
         {quotation.selectedEvents.length > 0 && (
           <div className="quotation-section" style={{
             background: "white",
@@ -1283,66 +1369,59 @@ export default function Quotation({
             borderRadius: "12px",
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
           }}>
-            <div style={{ display: "grid", gap: "12px" }}>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
               <button
                 onClick={sendQuotationEmail}
                 disabled={loading}
-                className="submit-button"
                 style={{
-                  width: "100%",
-                  padding: "12px",
-                  background: "#10b981",
+                  flex: 1,
+                  padding: "14px 24px",
+                  background: loading ? "#d1d5db" : "#10b981",
                   color: "white",
                   border: "none",
                   borderRadius: "8px",
-                  fontWeight: "600",
-                  fontSize: "14px",
+                  fontWeight: "700",
+                  fontSize: "15px",
                   cursor: loading ? "not-allowed" : "pointer",
-                  opacity: loading ? 0.6 : 1,
+                  minWidth: "200px"
                 }}
               >
-                {loading ? "Sending..." : "📧 Submit Quotation"}
+                {loading ? "Sending..." : "📧 Send Quotation Email"}
               </button>
-              
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <button
-                  onClick={downloadQuotationPDF}
-                  disabled={loading}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "#3b82f6",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    opacity: loading ? 0.6 : 1,
-                  }}
-                >
-                  📄 Owner PDF
-                </button>
-                
-                <button
-                  onClick={downloadCustomerPDF}
-                  disabled={loading}
-                  style={{
-                    width: "100%",
-                    padding: "12px",
-                    background: "#8b5cf6",
-                    color: "white",
-                    border: "none",
-                    borderRadius: "8px",
-                    fontWeight: "600",
-                    fontSize: "14px",
-                    cursor: loading ? "not-allowed" : "pointer",
-                    opacity: loading ? 0.6 : 1,
-                  }}
-                >
-                  👤 Customer PDF
-                </button>
-              </div>
+              <button
+                onClick={downloadQuotationPDF}
+                style={{
+                  flex: 1,
+                  padding: "14px 24px",
+                  background: "#3b82f6",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: "700",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                  minWidth: "200px"
+                }}
+              >
+                📥 Download Owner PDF
+              </button>
+              <button
+                onClick={downloadCustomerPDF}
+                style={{
+                  flex: 1,
+                  padding: "14px 24px",
+                  background: "#8b5cf6",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontWeight: "700",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                  minWidth: "200px"
+                }}
+              >
+                📄 Download Customer PDF
+              </button>
             </div>
           </div>
         )}

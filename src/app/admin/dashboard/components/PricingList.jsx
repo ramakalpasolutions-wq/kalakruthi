@@ -9,19 +9,27 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
   const [submittedPrices, setSubmittedPrices] = useState({})
   const [isLoadingItems, setIsLoadingItems] = useState(true)
 
-  // ✅ Toast notification state
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' })
 
-  // ✅ Categories for different item types
-  const categories = ['Camera', 'Net Live', 'Drone', 'LED Wall', 'Sheets']
+  // ✅ UPDATED: 4 separate camera categories
+  const categories = [
+    'Traditional Photo Camera',
+    'Traditional Video Camera', 
+    'Candid Photo Camera',
+    'Candid Video Camera',
+    'Net Live',
+    'Drone',
+    'LED Wall',
+    'Sheets'
+  ]
+  
   const sheetQualities = ['Premium', 'Standard', 'Normal']
   const brands = ['Sony', 'Canon', 'Nikon', 'Panasonic', 'DJI', 'Samsung', 'LG', 'Other']
 
-  // ✅ Initialize items as empty array - will be loaded from DB
   const [items, setItems] = useState([])
 
   const [newItem, setNewItem] = useState({
-    category: 'Camera',
+    category: 'Traditional Photo Camera',
     brand: 'Sony',
     model: '',
     actualPriceHalfDay: 0,
@@ -43,7 +51,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
     balance: 0
   })
 
-  // ✅ Toast helper function
   const showToast = (message, type = 'success') => {
     setToast({ show: true, message, type })
     setTimeout(() => {
@@ -51,7 +58,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
     }, 3000)
   }
 
-  // ✅ Load items on component mount
   useEffect(() => {
     loadItemsFromDb()
   }, [])
@@ -70,7 +76,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
         const defaultItems = [
           { 
             id: 1, 
-            category: 'Camera', 
+            category: 'Traditional Photo Camera', 
             brand: 'Sony', 
             model: '7R III', 
             actualPriceHalfDay: 15000, 
@@ -80,7 +86,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
           },
           { 
             id: 2, 
-            category: 'Camera', 
+            category: 'Candid Video Camera', 
             brand: 'Sony', 
             model: 'FX3', 
             actualPriceHalfDay: 20000, 
@@ -99,7 +105,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
       const defaultItems = [
         { 
           id: 1, 
-          category: 'Camera', 
+          category: 'Traditional Photo Camera', 
           brand: 'Sony', 
           model: '7R III', 
           actualPriceHalfDay: 15000, 
@@ -131,7 +137,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
     }
   }
 
-  // ✅ Add new item - Sheets only need single price per sheet
   const addItem = () => {
     if (newItem.category !== 'Sheets' && !newItem.model.trim()) {
       showToast('❌ Please enter model/description', 'error')
@@ -143,18 +148,16 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
       id: Date.now()
     }
 
-    // For sheets, use quality as brand and set model
     if (newItem.category === 'Sheets') {
       itemToAdd.model = `${newItem.quality} Quality`
       itemToAdd.brand = newItem.quality
-      // For sheets, Full Day prices are set to 0 (not used)
       itemToAdd.actualPriceFullDay = 0
       itemToAdd.customerPriceFullDay = 0
     }
 
     setItems(prev => [...prev, itemToAdd])
     setNewItem({ 
-      category: 'Camera', 
+      category: 'Traditional Photo Camera', 
       brand: 'Sony', 
       model: '', 
       actualPriceHalfDay: 0, 
@@ -306,9 +309,9 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
       yPosition += 7
 
       const paymentData = [
-        ['Total Amount', `₹${b2bForm.totalPrice.toLocaleString('en-IN')}`],
-        ['Advance Paid', `₹${b2bForm.advance.toLocaleString('en-IN')}`],
-        ['Balance Due', `₹${b2bForm.balance.toLocaleString('en-IN')}`]
+        ['Total Amount', `Rs. ${b2bForm.totalPrice.toLocaleString('en-IN')}`],
+        ['Advance Paid', `Rs. ${b2bForm.advance.toLocaleString('en-IN')}`],
+        ['Balance Due', `Rs. ${b2bForm.balance.toLocaleString('en-IN')}`]
       ]
 
       doc.setFont('helvetica', 'normal')
@@ -379,7 +382,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
     width: '100%'
   }
 
-  // ✅ Show loading state while fetching items
   if (isLoadingItems) {
     return (
       <div style={{
@@ -462,7 +464,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
           display: inline-block;
           padding: 4px 12px;
           background: #e0e7ff;
-          border-radius: 6px;
+          borderRadius: 6px;
           font-size: 11px;
           font-weight: 700;
           color: #4338ca;
@@ -470,20 +472,19 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
           letter-spacing: 0.5px;
         }
 
-        /* ✅ Toast Notification Styles */
         .toast {
           position: fixed;
           top: 20px;
           right: 20px;
           padding: 16px 24px;
-          border-radius: 12px;
+          borderRadius: 12px;
           box-shadow: 0 8px 24px rgba(0,0,0,0.15);
           z-index: 9999;
           display: flex;
-          align-items: center;
+          alignItems: center;
           gap: 12px;
-          font-weight: 600;
-          font-size: 14px;
+          fontWeight: 600;
+          fontSize: 14px;
           animation: slideIn 0.3s ease-out;
           max-width: 400px;
         }
@@ -546,6 +547,10 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
             margin-bottom: 6px !important;
             display: block !important;
           }
+
+          .pricing-grid-container {
+            grid-template-columns: 1fr !important;
+          }
         }
 
         @media (min-width: 768px) {
@@ -562,7 +567,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
         }
       `}</style>
 
-      {/* ✅ Toast Notification */}
       {toast.show && (
         <div className={`toast ${toast.type}`}>
           <span style={{ fontSize: '20px' }}>
@@ -593,7 +597,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
             <h2 style={{ margin: 0, fontSize: '18px' }}>👤 Quotation Pricing (Half Day & Full Day)</h2>
           </div>
 
-          {/* ✅ Add Item Form - Sheets have only Price Per Sheet */}
           <div style={{ padding: '24px', background: '#f0fdf4', borderBottom: '2px solid #10b981' }}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#065f46' }}>
               ➕ Add New Item
@@ -613,7 +616,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   </select>
                 </div>
 
-                {/* ✅ Sheets: Show Quality selector instead of Brand */}
                 {newItem.category === 'Sheets' ? (
                   <div>
                     <label className="mobile-label">Quality *</label>
@@ -658,7 +660,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                 </div>
               </div>
 
-              {/* ✅ For Sheets: Only show "Price Per Sheet" section */}
               {newItem.category === 'Sheets' ? (
                 <div style={{ 
                   background: '#e0f2fe', 
@@ -697,76 +698,128 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                 </div>
               ) : (
                 <>
-                  {/* ✅ Half Day Prices */}
-                  <div style={{ 
-                    background: '#eff6ff', 
-                    padding: '16px', 
-                    borderRadius: '10px',
-                    border: '2px solid #3b82f6'
+                  <div className="pricing-grid-container" style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: '1fr 1fr', 
+                    gap: '12px' 
                   }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '700', color: '#1e40af' }}>
-                      🌅 Half Day Pricing
-                    </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div>
-                        <label className="mobile-label">Actual Price (Half Day)</label>
-                        <input
-                          type="number"
-                          placeholder="Actual Price"
-                          value={newItem.actualPriceHalfDay}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, actualPriceHalfDay: parseInt(e.target.value) || 0 }))}
-                          style={{ ...formInputStyle, background: '#fef3c7' }}
-                          min="0"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="mobile-label">Customer Price (Half Day)</label>
-                        <input
-                          type="number"
-                          placeholder="Customer Price"
-                          value={newItem.customerPriceHalfDay}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, customerPriceHalfDay: parseInt(e.target.value) || 0 }))}
-                          style={{ ...formInputStyle, background: '#d1fae5' }}
-                          min="0"
-                        />
+                    <div style={{ 
+                      background: '#eff6ff', 
+                      padding: '12px', 
+                      borderRadius: '8px',
+                      border: '2px solid #3b82f6'
+                    }}>
+                      <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '700', color: '#1e40af', textAlign: 'center' }}>
+                        🌅 Half Day
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '10px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>
+                            Actual
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={newItem.actualPriceHalfDay}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, actualPriceHalfDay: parseInt(e.target.value) || 0 }))}
+                            style={{ 
+                              padding: '8px', 
+                              border: '1px solid #f59e0b', 
+                              borderRadius: '6px', 
+                              background: '#fef3c7',
+                              textAlign: 'right',
+                              fontWeight: '600',
+                              fontSize: '13px',
+                              width: '100%',
+                              boxSizing: 'border-box'
+                            }}
+                            min="0"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label style={{ display: 'block', fontSize: '10px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>
+                            Customer
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={newItem.customerPriceHalfDay}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, customerPriceHalfDay: parseInt(e.target.value) || 0 }))}
+                            style={{ 
+                              padding: '8px', 
+                              border: '1px solid #10b981', 
+                              borderRadius: '6px', 
+                              background: '#d1fae5',
+                              textAlign: 'right',
+                              fontWeight: '600',
+                              fontSize: '13px',
+                              width: '100%',
+                              boxSizing: 'border-box'
+                            }}
+                            min="0"
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* ✅ Full Day Prices */}
-                  <div style={{ 
-                    background: '#fef3c7', 
-                    padding: '16px', 
-                    borderRadius: '10px',
-                    border: '2px solid #f59e0b'
-                  }}>
-                    <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '700', color: '#92400e' }}>
-                      ☀️ Full Day Pricing
-                    </h4>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                      <div>
-                        <label className="mobile-label">Actual Price (Full Day)</label>
-                        <input
-                          type="number"
-                          placeholder="Actual Price"
-                          value={newItem.actualPriceFullDay}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, actualPriceFullDay: parseInt(e.target.value) || 0 }))}
-                          style={{ ...formInputStyle, background: '#fef3c7' }}
-                          min="0"
-                        />
-                      </div>
-                      
-                      <div>
-                        <label className="mobile-label">Customer Price (Full Day)</label>
-                        <input
-                          type="number"
-                          placeholder="Customer Price"
-                          value={newItem.customerPriceFullDay}
-                          onChange={(e) => setNewItem(prev => ({ ...prev, customerPriceFullDay: parseInt(e.target.value) || 0 }))}
-                          style={{ ...formInputStyle, background: '#d1fae5' }}
-                          min="0"
-                        />
+                    <div style={{ 
+                      background: '#fef3c7', 
+                      padding: '12px', 
+                      borderRadius: '8px',
+                      border: '2px solid #f59e0b'
+                    }}>
+                      <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '700', color: '#92400e', textAlign: 'center' }}>
+                        ☀️ Full Day
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <div>
+                          <label style={{ display: 'block', fontSize: '10px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>
+                            Actual
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={newItem.actualPriceFullDay}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, actualPriceFullDay: parseInt(e.target.value) || 0 }))}
+                            style={{ 
+                              padding: '8px', 
+                              border: '1px solid #f59e0b', 
+                              borderRadius: '6px', 
+                              background: '#fef3c7',
+                              textAlign: 'right',
+                              fontWeight: '600',
+                              fontSize: '13px',
+                              width: '100%',
+                              boxSizing: 'border-box'
+                            }}
+                            min="0"
+                          />
+                        </div>
+                        
+                        <div>
+                          <label style={{ display: 'block', fontSize: '10px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>
+                            Customer
+                          </label>
+                          <input
+                            type="number"
+                            placeholder="0"
+                            value={newItem.customerPriceFullDay}
+                            onChange={(e) => setNewItem(prev => ({ ...prev, customerPriceFullDay: parseInt(e.target.value) || 0 }))}
+                            style={{ 
+                              padding: '8px', 
+                              border: '1px solid #10b981', 
+                              borderRadius: '6px', 
+                              background: '#d1fae5',
+                              textAlign: 'right',
+                              fontWeight: '600',
+                              fontSize: '13px',
+                              width: '100%',
+                              boxSizing: 'border-box'
+                            }}
+                            min="0"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -792,7 +845,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
             </div>
           </div>
           
-          {/* Desktop Header - Updated for Sheets */}
           <div className="grid-header" style={{
             display: 'grid', 
             gridTemplateColumns: '0.7fr 0.8fr 1.2fr 0.9fr 0.9fr 0.9fr 0.9fr 80px', 
@@ -807,10 +859,10 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
             <div>Category</div>
             <div>Brand</div>
             <div>Model</div>
-            <div style={{ textAlign: 'center' }}>Actual ₹<br/>(Half/Per)</div>
-            <div style={{ textAlign: 'center' }}>Customer ₹<br/>(Half/Per)</div>
-            <div style={{ textAlign: 'center' }}>Actual ₹<br/>(Full)</div>
-            <div style={{ textAlign: 'center' }}>Customer ₹<br/>(Full)</div>
+            <div style={{ textAlign: 'center' }}>Actual Rs.<br/>(Half/Per)</div>
+            <div style={{ textAlign: 'center' }}>Customer Rs.<br/>(Half/Per)</div>
+            <div style={{ textAlign: 'center' }}>Actual Rs.<br/>(Full)</div>
+            <div style={{ textAlign: 'center' }}>Customer Rs.<br/>(Full)</div>
             <div style={{ textAlign: 'center' }}>Delete</div>
           </div>
 
@@ -824,13 +876,11 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                 padding: '12px 0', 
                 borderBottom: '1px solid #f1f5f9'
               }}>
-                {/* Category */}
                 <div>
                   <label className="mobile-label">Category</label>
                   <span className="category-badge">{item.category}</span>
                 </div>
                 
-                {/* Brand */}
                 <div>
                   <label className="mobile-label">Brand</label>
                   {item.category === 'Sheets' ? (
@@ -850,7 +900,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   )}
                 </div>
                 
-                {/* Model */}
                 <div>
                   <label className="mobile-label">Model/Description</label>
                   <input
@@ -861,7 +910,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   />
                 </div>
                 
-                {/* Actual Price Half Day / Per Sheet */}
                 <div>
                   <label className="mobile-label">
                     Actual Price ({item.category === 'Sheets' ? 'Per Sheet' : 'Half Day'})
@@ -876,7 +924,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   />
                 </div>
                 
-                {/* Customer Price Half Day / Per Sheet */}
                 <div>
                   <label className="mobile-label">
                     Customer Price ({item.category === 'Sheets' ? 'Per Sheet' : 'Half Day'})
@@ -891,7 +938,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   />
                 </div>
 
-                {/* Actual Price Full Day - N/A for Sheets */}
                 <div>
                   <label className="mobile-label">Actual Price (Full Day)</label>
                   {item.category === 'Sheets' ? (
@@ -918,7 +964,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   )}
                 </div>
 
-                {/* Customer Price Full Day - N/A for Sheets */}
                 <div>
                   <label className="mobile-label">Customer Price (Full Day)</label>
                   {item.category === 'Sheets' ? (
@@ -945,7 +990,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   )}
                 </div>
 
-                {/* Delete Button */}
                 <div>
                   <label className="mobile-label">Delete</label>
                   <button onClick={() => deleteItem(item.id)}
@@ -1021,7 +1065,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
         </div>
       ) : (
         <div className="pricing-card">
-          {/* B2B SECTION */}
           <div style={{
             display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center',
             padding: '20px 24px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
@@ -1029,7 +1072,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
           }}>
             <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700' }}>💼 B2B Order Form</h2>
             <div style={{ fontSize: '24px', fontWeight: '800' }}>
-              ₹{b2bForm.totalPrice.toLocaleString()}
+              Rs. {b2bForm.totalPrice.toLocaleString('en-IN')}
             </div>
           </div>
 
@@ -1040,7 +1083,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   value={b2bForm.studioName}
                   onChange={(e) => handleB2bInputChange('studioName', e.target.value)}
                   style={formInputStyle} />
-                <input placeholder="👤 Person Name *" 
+                <input placeholder="👤 Person Name" 
                   value={b2bForm.personName}
                   onChange={(e) => handleB2bInputChange('personName', e.target.value)}
                   style={formInputStyle} />
@@ -1079,8 +1122,8 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                               type="checkbox"
                               onChange={(e) => {
                                 const itemName = item.category === 'Sheets' 
-                                  ? `${item.category} - ${item.brand} ${item.model} (₹${item.customerPriceHalfDay} per sheet)`
-                                  : `${item.category} - ${item.brand} ${item.model} (Half: ₹${item.customerPriceHalfDay}, Full: ₹${item.customerPriceFullDay})`
+                                  ? `${item.model} (Rs. ${item.customerPriceHalfDay}/sheet)`
+                                  : `${item.category} - ${item.brand} ${item.model} (Half: Rs. ${item.customerPriceHalfDay.toLocaleString('en-IN')}, Full: Rs. ${item.customerPriceFullDay.toLocaleString('en-IN')})`
                                 if (e.target.checked) {
                                   handleB2bInputChange('selectedItems', [...b2bForm.selectedItems, itemName])
                                 } else {
@@ -1090,9 +1133,10 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                               style={{ width: '18px', height: '18px' }}
                             />
                             <span style={{ fontSize: '13px', fontWeight: '500' }}>
+                              {item.brand} {item.model} - 
                               {item.category === 'Sheets' 
-                                ? `${item.brand} ${item.model} - ₹${item.customerPriceHalfDay.toLocaleString()} per sheet`
-                                : `${item.brand} ${item.model} - Half: ₹${item.customerPriceHalfDay.toLocaleString()} | Full: ₹${item.customerPriceFullDay.toLocaleString()}`
+                                ? ` Rs. ${item.customerPriceHalfDay.toLocaleString('en-IN')}/sheet`
+                                : ` Half: Rs. ${item.customerPriceHalfDay.toLocaleString('en-IN')}, Full: Rs. ${item.customerPriceFullDay.toLocaleString('en-IN')}`
                               }
                             </span>
                           </label>
@@ -1103,31 +1147,49 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                 })}
               </div>
 
-              <input placeholder="📍 Event Location *" 
+              <input placeholder="📍 Location" 
                 value={b2bForm.location}
                 onChange={(e) => handleB2bInputChange('location', e.target.value)}
                 style={formInputStyle} />
 
-              <select value={b2bForm.timeSlot}
+              <select
+                value={b2bForm.timeSlot}
                 onChange={(e) => handleB2bInputChange('timeSlot', e.target.value)}
-                style={formInputStyle}>
-                <option value="Half Day">⏰ Half Day</option>
+                style={formInputStyle}
+              >
+                <option value="Half Day">🌅 Half Day</option>
                 <option value="Full Day">☀️ Full Day</option>
               </select>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                <input type="number" placeholder="💰 Total Amount *"
-                  value={b2bForm.totalPrice || ''}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <input
+                  type="number"
+                  placeholder="💰 Total Amount *"
+                  value={b2bForm.totalPrice}
                   onChange={(e) => handleB2bInputChange('totalPrice', e.target.value)}
-                  style={{ ...formInputStyle, background: '#fef3c7', fontWeight: '700' }} />
-                <input type="number" placeholder="💵 Advance Paid"
-                  value={b2bForm.advance || ''}
+                  style={formInputStyle}
+                  min="0"
+                />
+                <input
+                  type="number"
+                  placeholder="💵 Advance Paid"
+                  value={b2bForm.advance}
                   onChange={(e) => handleB2bInputChange('advance', e.target.value)}
-                  style={{ ...formInputStyle, background: '#d1fae5', fontWeight: '700' }} />
-                <input type="number" placeholder="🔄 Balance"
-                  value={b2bForm.balance}
-                  readOnly
-                  style={{ ...formInputStyle, background: '#fee2e2', fontWeight: '700', cursor: 'not-allowed' }} />
+                  style={formInputStyle}
+                  min="0"
+                />
+              </div>
+
+              <div style={{ 
+                padding: '16px', 
+                background: '#f0fdf4', 
+                borderRadius: '10px',
+                border: '2px solid #10b981'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '700' }}>
+                  <span style={{ color: '#065f46' }}>Balance Due:</span>
+                  <span style={{ color: '#059669' }}>Rs. {b2bForm.balance.toLocaleString('en-IN')}</span>
+                </div>
               </div>
 
               <button onClick={downloadB2BPdf}
@@ -1143,7 +1205,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
                 }}
               >
-                📄 Generate & Download PDF
+                📥 Download PDF & Save Order
               </button>
             </div>
           </div>
