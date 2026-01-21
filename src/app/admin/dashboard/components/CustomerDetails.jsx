@@ -344,23 +344,41 @@ export default function CustomerDetails({
                   Advance #{index + 1}
                 </h4>
                 <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)", gap: "12px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>
-                      Amount (₹)
-                    </label>
-                    <input
-                      type="number"
-                      value={adv.amount}
-                      onChange={(e) => updateAdvance(index, "amount", e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "8px",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "6px",
-                        fontSize: "13px",
-                      }}
-                    />
-                  </div>
+                 <div>
+  <label style={{ display: "block", fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>
+    Amount (₹)
+  </label>
+
+  <input
+  type="number"
+  value={adv.amount}
+  onChange={(e) => {
+    updateAdvance(index, "amount", e.target.value)
+    updateAdvance(index, "isAuto", false)
+  }}
+  style={{
+    width: "100%",
+    padding: "8px",
+    border: "1px solid #d1d5db",
+    borderRadius: "6px",
+    fontSize: "13px",
+    background: adv.isAuto ? "#f0fdf4" : "white",
+  }}
+/>
+
+{adv.isAuto && index < 3 && (
+  <p style={{ fontSize: "10px", color: "#16a34a", marginTop: "4px" }}>
+    Auto • 25% of Total
+  </p>
+)}
+
+{!adv.isAuto && adv.amount && (
+  <p style={{ fontSize: "10px", color: "#6b7280", marginTop: "4px" }}>
+    Manual amount
+  </p>
+)}
+</div>
+
                   <div>
                     <label style={{ display: "block", fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>
                       Date
@@ -378,28 +396,78 @@ export default function CustomerDetails({
                       }}
                     />
                   </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>
-                      Payment Mode
-                    </label>
-                    <select
-                      value={adv.paymentMode}
-                      onChange={(e) => updateAdvance(index, "paymentMode", e.target.value)}
-                      style={{
-                        width: "100%",
-                        padding: "8px",
-                        border: "1px solid #d1d5db",
-                        borderRadius: "6px",
-                        fontSize: "13px",
-                      }}
-                    >
-                      <option value="">Select</option>
-                      <option value="Cash">Cash</option>
-                      <option value="UPI">UPI</option>
-                      <option value="Card">Card</option>
-                      <option value="Bank Transfer">Bank Transfer</option>
-                    </select>
-                  </div>
+                 <div>
+  <label style={{ display: "block", fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>
+    Payment Mode
+  </label>
+
+  <select
+    value={adv.paymentMode}
+    onChange={(e) => updateAdvance(index, "paymentMode", e.target.value)}
+    style={{
+      width: "100%",
+      padding: "8px",
+      border: "1px solid #d1d5db",
+      borderRadius: "6px",
+      fontSize: "13px",
+      marginBottom: adv.paymentMode === "UPI" ? "8px" : "0",
+    }}
+  >
+    <option value="">Select</option>
+    <option value="Cash">Cash</option>
+    <option value="UPI">UPI</option>
+    <option value="Card">Card</option>
+    <option value="Bank Transfer">Bank Transfer</option>
+  </select>
+
+  {/* UPI App Selection */}
+  {adv.paymentMode === "UPI" && (
+  <>
+    <label style={{ display: "block", fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>
+      UPI App
+    </label>
+
+    <select
+      value={adv.upiApp || ""}
+      onChange={(e) => updateAdvance(index, "upiApp", e.target.value)}
+      style={{
+        width: "100%",
+        padding: "8px",
+        border: "1px solid #d1d5db",
+        borderRadius: "6px",
+        fontSize: "13px",
+        marginBottom: adv.upiApp === "Other" ? "6px" : "0",
+      }}
+    >
+      <option value="">Select UPI App</option>
+      <option value="GPay">GPay</option>
+      <option value="PhonePe">PhonePe</option>
+      <option value="Paytm">Paytm</option>
+      <option value="Navi">Navi</option>
+      <option value="Other">Other</option>
+    </select>
+
+    {/* Manual UPI input when Other is selected */}
+    {adv.upiApp === "Other" && (
+      <input
+        type="text"
+        placeholder="Enter UPI app name"
+        value={adv.otherUpi || ""}
+        onChange={(e) => updateAdvance(index, "otherUpi", e.target.value)}
+        style={{
+          width: "100%",
+          padding: "8px",
+          border: "1px solid #d1d5db",
+          borderRadius: "6px",
+          fontSize: "13px",
+        }}
+      />
+    )}
+  </>
+)}
+
+</div>
+
                 </div>
               </div>
             ))}
@@ -522,13 +590,21 @@ export default function CustomerDetails({
                       padding: "16px",
                       color: "white",
                     }}>
-                      <h3 style={{
-                        fontSize: "16px",
-                        fontWeight: "700",
-                        marginBottom: "4px",
-                      }}>
-                        {customer.name}
-                      </h3>
+                     <h3
+  onClick={() => {
+    setOpenPaymentRowId(openPaymentRowId === customerId ? null : customerId)
+    setOpenAdvanceId(null)
+  }}
+  style={{
+    fontSize: "16px",
+    fontWeight: "700",
+    marginBottom: "4px",
+    cursor: "pointer",
+  }}
+>
+  {customer.name}
+</h3>
+
                       <p style={{ fontSize: "12px", opacity: 0.9 }}>
                         📅 {customer.date || "N/A"}
                       </p>
@@ -606,7 +682,7 @@ export default function CustomerDetails({
 
                       {/* Action Buttons */}
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginBottom: "12px" }}>
-                        <button
+                        {/* <button
                           onClick={() => {
                             setOpenPaymentRowId(openPaymentRowId === customerId ? null : customerId)
                             setOpenAdvanceId(null)
@@ -623,7 +699,7 @@ export default function CustomerDetails({
                           }}
                         >
                           {openPaymentRowId === customerId ? "Hide" : "View"}
-                        </button>
+                        </button> */}
                         <button
                           onClick={() => {
                             handleEditCustomer(customer)
@@ -706,7 +782,19 @@ export default function CustomerDetails({
                                   </div>
                                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "#6b7280" }}>
                                     <span>📅 {adv.date || "N/A"}</span>
-                                    <span>💳 {adv.paymentMode || "N/A"}</span>
+                                   <span>
+                                    💳 {adv.paymentMode}
+                                    {adv.paymentMode === "UPI" && (
+                                      <>
+                                        {" "}
+                                        (
+                                        {adv.upiApp === "Other"
+                                          ? adv.otherUpi || "Other"
+                                          : adv.upiApp}
+                                        )
+                                      </>
+                                    )}
+                                  </span>
                                   </div>
                                 </div>
                               ))}
@@ -804,9 +892,25 @@ export default function CustomerDetails({
                           onMouseEnter={(e) => e.currentTarget.style.background = "#f9fafb"}
                           onMouseLeave={(e) => e.currentTarget.style.background = "white"}
                           >
-                            <td style={{ padding: "16px", fontSize: "14px", fontWeight: "600", color: "#1f2937" }}>
+                            {/* <td style={{ padding: "16px", fontSize: "14px", fontWeight: "600", color: "#1f2937" }}>
                               {customer.name}
-                            </td>
+                            </td> */}
+                            <td
+  onClick={() => {
+    setOpenPaymentRowId(openPaymentRowId === customerId ? null : customerId)
+    setOpenAdvanceId(null)
+  }}
+  style={{
+    padding: "16px",
+    fontSize: "14px",
+    fontWeight: "600",
+    color: "#1f2937",
+    cursor: "pointer",
+  }}
+>
+  {customer.name}
+</td>
+
                             <td style={{ padding: "16px", fontSize: "13px", color: "#6b7280" }}>
                               {customer.date || "N/A"}
                             </td>
@@ -835,7 +939,7 @@ export default function CustomerDetails({
                             </td>
                             <td style={{ padding: "16px", textAlign: "center" }}>
                               <div style={{ display: "flex", gap: "6px", justifyContent: "center", flexWrap: "wrap" }}>
-                                <button
+                                {/* <button
                                   onClick={() => {
                                     setOpenPaymentRowId(openPaymentRowId === customerId ? null : customerId)
                                     setOpenAdvanceId(null)
@@ -853,7 +957,7 @@ export default function CustomerDetails({
                                   }}
                                 >
                                   {openPaymentRowId === customerId ? "Hide" : "View"}
-                                </button>
+                                </button> */}
                                 <button
                                   onClick={() => {
                                     handleEditCustomer(customer)
@@ -948,8 +1052,15 @@ export default function CustomerDetails({
                                             <div>
                                               <p style={{ fontSize: "11px", color: "#6b7280", marginBottom: "4px" }}>Mode</p>
                                               <p style={{ fontSize: "13px", fontWeight: "600", color: "#4b5563" }}>
-                                                {adv.paymentMode || "N/A"}
+                                                {adv.paymentMode === "UPI"
+                                                  ? `UPI (${
+                                                      adv.upiApp === "Other"
+                                                        ? adv.otherUpi || "Other"
+                                                        : adv.upiApp || "N/A"
+                                                    })`
+                                                  : adv.paymentMode || "N/A"}
                                               </p>
+
                                             </div>
                                           </div>
                                         </div>

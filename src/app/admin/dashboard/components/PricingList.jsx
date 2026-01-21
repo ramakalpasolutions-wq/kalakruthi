@@ -462,14 +462,15 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
 
         .category-badge {
           display: inline-block;
-          padding: 4px 12px;
+          padding: 1px 20px;
+          radius:"10px"
           background: #e0e7ff;
-          borderRadius: 6px;
-          font-size: 11px;
-          font-weight: 700;
+          border-radius: 6px;
+          font-size: 10px;
+          font-weight: 900;
           color: #4338ca;
           text-transform: uppercase;
-          letter-spacing: 0.5px;
+          
         }
 
         .toast {
@@ -590,7 +591,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
       {activePricingLayout === 'Quotation' ? (
         <div className="pricing-card">
           <div className="pricing-card-header" style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            textAlign: 'center',
             padding: '20px 24px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white', borderRadius: '16px 16px 0 0'
           }}>
@@ -598,9 +599,6 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
           </div>
 
           <div style={{ padding: '24px', background: '#f0fdf4', borderBottom: '2px solid #10b981' }}>
-            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '700', color: '#065f46' }}>
-              ➕ Add New Item
-            </h3>
             <div style={{ display: 'grid', gap: '16px' }}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px' }}>
                 <div>
@@ -709,7 +707,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                       borderRadius: '8px',
                       border: '2px solid #3b82f6'
                     }}>
-                      <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '700', color: '#1e40af', textAlign: 'center' }}>
+                      <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '700', color: '#1e40af', textAlign: 'left' }}>
                         🌅 Half Day
                       </h4>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -769,7 +767,7 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                       borderRadius: '8px',
                       border: '2px solid #f59e0b'
                     }}>
-                      <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '700', color: '#92400e', textAlign: 'center' }}>
+                      <h4 style={{ margin: '0 0 10px 0', fontSize: '13px', fontWeight: '700', color: '#92400e', textAlign: 'left' }}>
                         ☀️ Full Day
                       </h4>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -825,23 +823,34 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                   </div>
                 </>
               )}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "center",
+            width: "100%",
+          }}
+        >
+          <button
+            onClick={addItem}
+            style={{
+              padding: "12px 16px",
+              background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+              color: "white",
+              border: "none",
+              borderRadius: "10px",
+              fontWeight: "700",
+              fontSize: "14px",
+              cursor: "pointer",
+              boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+              minHeight: "48px",
+              width: "100%",
+              maxWidth: "150px",   // 👈 desktop size
+            }}
+          >
+            Add Item
+          </button>
+        </div>
 
-              <button onClick={addItem}
-                style={{
-                  padding: '14px 20px',
-                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontWeight: '700',
-                  fontSize: '14px',
-                  cursor: 'pointer',
-                  boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-                  minHeight: '48px'
-                }}
-              >
-                ➕ Add Item
-              </button>
             </div>
           </div>
           

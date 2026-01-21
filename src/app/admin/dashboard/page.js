@@ -208,54 +208,75 @@ const [quotation, setQuotation] = useState({
   
 
   // Customer Functions
-  const handleTotalAmountChange = (value) => {
-    const totalAmount = parseInt(value) || 0
-    const totalPaid = (formData.advances || []).reduce(
-      (sum, adv) => sum + (Number(adv.amount) || 0),
-      0
-    )
-    const dueAmount = totalAmount - totalPaid
-    setFormData({
-      ...formData,
-      totalAmount: value,
-      dueAmount: dueAmount,
-      status: dueAmount <= 0 ? "Paid" : "Pending",
+const handleTotalAmountChange = (value) => {
+  const totalAmount = Number(value) || 0
+  const autoAmount = Math.round(totalAmount * 0.25)
+
+  const updatedAdvances = formData.advances.map((adv, index) =>
+    adv.isAuto && index < 3
+      ? { ...adv, amount: autoAmount }
+      : adv
+  )
+
+  const totalPaid = updatedAdvances.reduce(
+    (sum, adv) => sum + (Number(adv.amount) || 0),
+    0
+  )
+
+  setFormData((prev) => ({
+    ...prev,
+    totalAmount,
+    advances: updatedAdvances,
+    dueAmount: totalAmount - totalPaid,
+  }))
+}
+
+
+
+
+const handleAdvanceCountChange = (count) => {
+  setSelectedAdvanceCount(count)
+
+  const totalAmount = Number(formData.totalAmount) || 0
+  const autoAmount = Math.round(totalAmount * 0.25)
+
+  const newAdvances = []
+
+  for (let i = 0; i < count; i++) {
+    const existing = formData.advances[i]
+
+    const shouldAuto =
+      i < 3 && (existing?.isAuto ?? true)
+
+    newAdvances.push({
+      ...existing,
+      amount: shouldAuto
+        ? autoAmount
+        : existing?.amount || "",
+      isAuto: shouldAuto,
+      date: existing?.date || "",
+      paymentMode: existing?.paymentMode || "",
+      upiApp: existing?.upiApp || "",
+      otherUpi: existing?.otherUpi || "",
     })
   }
 
-  const handleAdvanceCountChange = (count) => {
-    setSelectedAdvanceCount(count)
-    
-    const currentAdvances = formData.advances || []
-    const currentCount = currentAdvances.length
-    
-    let newAdvances = [...currentAdvances]
-    
-    if (count > currentCount) {
-      const additionalAdvances = Array.from({ length: count - currentCount }, () => ({
-        amount: "",
-        date: "",
-        paymentMode: "",
-      }))
-      newAdvances = [...currentAdvances, ...additionalAdvances]
-    } else if (count < currentCount) {
-      newAdvances = currentAdvances.slice(0, count)
-    }
-    
-    const totalPaid = newAdvances.reduce(
-      (sum, adv) => sum + (Number(adv.amount) || 0),
-      0
-    )
-    const totalAmount = parseInt(formData.totalAmount) || 0
-    const dueAmount = totalAmount - totalPaid
-    
-    setFormData({
-      ...formData,
-      advances: newAdvances,
-      dueAmount,
-      status: dueAmount <= 0 ? "Paid" : "Pending",
-    })
-  }
+  const totalPaid = newAdvances.reduce(
+    (sum, adv) => sum + (Number(adv.amount) || 0),
+    0
+  )
+
+  setFormData((prev) => ({
+    ...prev,
+    advances: newAdvances,
+    dueAmount: totalAmount - totalPaid,
+    status: totalAmount - totalPaid <= 0 ? "Paid" : "Pending",
+  }))
+}
+
+
+
+
 
   const updateAdvance = (index, field, value) => {
     const newAdvances = [...formData.advances]
@@ -798,6 +819,7 @@ const [quotation, setQuotation] = useState({
   }
 
   return (
+    
     <div className="dashboard-container">
       <Loading loading={loading} />
       <Toast toast={toast} />

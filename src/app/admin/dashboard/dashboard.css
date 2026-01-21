@@ -302,6 +302,20 @@
   margin-bottom: 8px;
   font-weight: 700;
 }
+/* REMOVE LEFT BLACK LINE BEFORE SECTION HEADINGS */
+.section-title,
+.section-header,
+.form-section-title {
+  border-left: none !important;
+}
+
+.section-title::before,
+.section-header::before,
+.form-section-title::before {
+  content: none !important;
+  display: none !important;
+}
+
 
 .feature-list {
   list-style: none;
