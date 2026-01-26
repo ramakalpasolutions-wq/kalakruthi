@@ -1,6 +1,10 @@
 'use client'
 import React, { useCallback, useRef, useState, useEffect } from 'react'
-import { generateQuotationPDF } from './QuotationPDF'
+import { 
+  generateQuotationPDF,
+  generateCustomerQuotationPDF
+} from './QuotationPDF'
+
 import { SERVICES_BY_EVENT, SERVICE_TO_CAMERA_MAP } from './constants'
 
 export default function Quotation({ 
@@ -13,7 +17,9 @@ export default function Quotation({
   setNewEventName,
   loading,
   setLoading,
-  showToast 
+  showToast ,
+  refreshCustomers   // ✅ ADD THIS
+
 }) {
   const scrollRef = useRef(null)
   const [showCustomEventInput, setShowCustomEventInput] = useState(false)
@@ -532,64 +538,87 @@ export default function Quotation({
     }
   }
 
-  const sendQuotationEmail = async () => {
-    if (!quotation.customerEmail) {
-      showToast("Please enter customer email", "error")
-      return
-    }
-    if (!quotation.firstName || !quotation.customerPhone) {
-      showToast("Please fill customer details", "error")
-      return
-    }
-    try {
-      setLoading(true)
-      
-      const totals = calculateQuotationTotal()
-      const pdfWithPrices = generateQuotationPDF(quotation, calculateQuotationTotal, true)
-      const pdfWithoutPrices = generateQuotationPDF(quotation, calculateQuotationTotal, false)
-      
-      const pdfOwnerBlob = pdfWithPrices.output("blob")
-      const pdfCustomerBlob = pdfWithoutPrices.output("blob")
-      
-      const formData = new FormData()
-      formData.append("pdfOwner", pdfOwnerBlob, "quotation_owner.pdf")
-      formData.append("pdfCustomer", pdfCustomerBlob, "quotation_customer.pdf")
-      formData.append("customerEmail", quotation.customerEmail)
-      formData.append("subject", `Quotation from Kalakruthi Photography - ${quotation.selectedEvents.join(", ")}`)
-      formData.append("customerName", `${quotation.firstName} ${quotation.lastName || ''}`)
-      formData.append("eventType", quotation.selectedEvents.join(", "))
+ // Update these functions in Quotation.jsx
 
-      const response = await fetch("/api/send-quotation", {
-        method: "POST",
-        body: formData,
-      })
-      
-      const result = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(result.error || "Failed to send email")
-      }
-      
-      showToast("Quotation sent successfully!", "success")
-    } catch (error) {
-      console.error("Email error:", error)
-      showToast(`Error: ${error.message}`, "error")
-    } finally {
-      setLoading(false)
+const sendQuotationEmail = async () => {
+  if (!quotation.customerEmail) {
+    showToast("Please enter customer email", "error")
+    return
+  }
+  if (!quotation.firstName || !quotation.customerPhone) {
+    showToast("Please fill customer details", "error")
+    return
+  }
+  try {
+    setLoading(true)
+    
+    // 🆕 Pass equipmentList to PDF generators
+    const pdfWithPrices = generateQuotationPDF(
+      quotation,
+      calculateQuotationTotal,
+      true,
+      equipmentList // 🆕 Add equipment list
+    )
+
+    const pdfWithoutPrices = generateCustomerQuotationPDF(
+      quotation,
+      calculateQuotationTotal,
+      equipmentList // 🆕 Add equipment list
+    )
+    
+    const pdfOwnerBlob = pdfWithPrices.output("blob")
+    const pdfCustomerBlob = pdfWithoutPrices.output("blob")
+    
+    const formData = new FormData()
+    formData.append("pdfOwner", pdfOwnerBlob, "quotation_owner.pdf")
+    formData.append("pdfCustomer", pdfCustomerBlob, "quotation_customer.pdf")
+    formData.append("customerEmail", quotation.customerEmail)
+    formData.append("subject", `Quotation from Kalakruthi Photography - ${quotation.selectedEvents.join(", ")}`)
+    formData.append("customerName", `${quotation.firstName} ${quotation.lastName || ''}`)
+    formData.append("eventType", quotation.selectedEvents.join(", "))
+
+    const response = await fetch("/api/send-quotation", {
+      method: "POST",
+      body: formData,
+    })
+    
+    const result = await response.json()
+    
+    if (!response.ok) {
+      throw new Error(result.error || "Failed to send email")
     }
+    
+    showToast("Quotation sent successfully!", "success")
+  } catch (error) {
+    console.error("Email error:", error)
+    showToast(`Error: ${error.message}`, "error")
+  } finally {
+    setLoading(false)
   }
+}
 
-  const downloadQuotationPDF = () => {
-    const pdf = generateQuotationPDF(quotation, calculateQuotationTotal, true)
-    pdf.save(`Quotation_${quotation.firstName}${quotation.lastName || ''}.pdf`)
-    showToast("PDF downloaded!", "success")
-  }
+const downloadQuotationPDF = () => {
+  // 🆕 Pass equipmentList to PDF generator
+  const pdf = generateQuotationPDF(
+    quotation,
+    calculateQuotationTotal,
+    true,
+    equipmentList // 🆕 Add equipment list
+  )
+  pdf.save(`Quotation_${quotation.firstName}${quotation.lastName || ''}.pdf`)
+  showToast("PDF downloaded!", "success")
+}
 
-  const downloadCustomerPDF = () => {
-    const pdf = generateQuotationPDF(quotation, calculateQuotationTotal, false)
-    pdf.save(`Quotation_Customer_${quotation.firstName}${quotation.lastName || ''}.pdf`)
-    showToast("Customer PDF downloaded!", "success")
-  }
+const downloadCustomerPDF = () => {
+  // 🆕 Pass equipmentList to PDF generator
+  const pdf = generateCustomerQuotationPDF(
+    quotation,
+    calculateQuotationTotal,
+    equipmentList // 🆕 Add equipment list
+  )
+  pdf.save(`Quotation_Customer_${quotation.firstName}${quotation.lastName || ''}.pdf`)
+  showToast("Customer PDF downloaded!", "success")
+}
 
   const totals = calculateQuotationTotal()
 
@@ -598,7 +627,7 @@ export default function Quotation({
     'Mature Function', 
     'Engagement',
     'Haldi',
-    'Sangith',
+    'Sangeeth',
     'Formalties',
     'Marriage',
     'Reception',
@@ -607,6 +636,171 @@ export default function Quotation({
   ]
 
   const timeSlots = ["Half Day", "Full Day"]
+
+  
+// ✅ ADD THIS FUNCTION IN Quotation.jsx (before the return statement)
+
+// Updated saveQuotationToCustomer function for Quotation.jsx
+
+const saveQuotationToCustomer = async () => {
+  if (!quotation.customerEmail) {
+    showToast("Please enter customer email", "error")
+    return
+  }
+  if (!quotation.firstName || !quotation.customerPhone) {
+    showToast("Please fill customer details", "error")
+    return
+  }
+
+  try {
+    setLoading(true)
+
+    // 🆕 Pass equipmentList to PDF generators
+    const pdfWithPrices = generateQuotationPDF(
+      quotation,
+      calculateQuotationTotal,
+      true,
+      equipmentList // 🆕 Add equipment list
+    )
+
+    const pdfWithoutPrices = generateCustomerQuotationPDF(
+      quotation,
+      calculateQuotationTotal,
+      equipmentList // 🆕 Add equipment list
+    )
+
+    const ownerPdfBase64 = pdfWithPrices.output("dataurlstring").split(",")[1]
+    const customerPdfBase64 = pdfWithoutPrices.output("dataurlstring").split(",")[1]
+
+    const totals = calculateQuotationTotal()
+    const fileName = `Quotation_${quotation.firstName}_${Date.now()}`
+    const cleanTotal = Number(totals.total.replace(/,/g, ""))
+
+    // Step 1: Get or create customer
+    let customerId = null
+
+    try {
+      const customersRes = await fetch("/api/customers")
+      const customers = await customersRes.json()
+
+      const existingCustomer = customers.find(
+        c => c.phone === quotation.customerPhone
+      )
+
+      if (existingCustomer) {
+        customerId = existingCustomer._id
+        console.log("✅ Found existing customer:", customerId)
+      } else {
+        const createRes = await fetch("/api/customers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: `${quotation.firstName} ${quotation.lastName || ""}`,
+            email: quotation.customerEmail,
+            phone: quotation.customerPhone,
+            location: quotation.location || "",
+            date: new Date().toISOString().split("T")[0],
+            totalAmount: cleanTotal,
+            amount: 0,
+            dueAmount: cleanTotal,
+            advances: [],
+            hardDisk: "Hard Disk",
+            hardDiskAmount: 5000,
+            status: "Pending",
+          }),
+        })
+
+        if (!createRes.ok) {
+          throw new Error("Failed to create customer")
+        }
+
+        const created = await createRes.json()
+        customerId = created._id || created.id
+        console.log("✅ Created new customer:", customerId)
+      }
+    } catch (customerError) {
+      console.error("❌ Customer fetch error:", customerError)
+      showToast("Error fetching customer data", "error")
+      return
+    }
+
+    if (!customerId) {
+      showToast("Failed to get customer ID", "error")
+      return
+    }
+
+    // Step 2: Save quotation with PDFs
+    try {
+      const quotationRes = await fetch("/api/quotations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          customerId,
+          quotationData: {
+            ...quotation,
+            events: quotation.selectedEvents,
+            equipment: quotation.selectedEquipment,
+          },
+          pdfData: {
+            ownerPdfBase64,
+            customerPdfBase64,
+            fileName,
+          },
+          totals,
+        }),
+      })
+
+      if (!quotationRes.ok) {
+        const errorText = await quotationRes.text()
+        console.error("❌ Quotation save failed:", errorText)
+        throw new Error("Failed to save quotation")
+      }
+
+      const quotationResult = await quotationRes.json()
+      console.log("✅ Quotation saved:", quotationResult)
+
+      showToast("✅ Quotation saved to customer details!", "success")
+      if (typeof refreshCustomers === "function") {
+  await refreshCustomers()
+}
+      
+
+
+
+
+
+
+      // Reset form after successful save
+      setTimeout(() => {
+        setQuotation({
+          firstName: "",
+          lastName: "",
+          customerEmail: "",
+          customerPhone: "",
+          location: "",
+          selectedEvents: [],
+          eventDates: {},
+          selectedEquipment: {},
+          sheetsCount: 0,
+          sheetsPricePerSheet: 0,
+          sheetsActualPricePerSheet: 0,
+          discount: 0,
+        })
+      }, 500)
+
+    } catch (quotationError) {
+      console.error("❌ Quotation error:", quotationError)
+      showToast(`Error: ${quotationError.message}`, "error")
+    }
+
+  } catch (err) {
+    console.error("❌ Unexpected error:", err)
+    showToast("Failed to save quotation", "error")
+  } finally {
+    setLoading(false)
+  }
+}
+
 
   return (
     <div ref={scrollRef}>
@@ -706,7 +900,7 @@ export default function Quotation({
           }
         }
 
-        @media (min-width: 769px) {
+        @media (min-width: 769px) { 
           .mobile-label {
             display: none !important;
           }
@@ -725,7 +919,7 @@ export default function Quotation({
           <h3 className="section-title" style={{ fontSize: "18px", fontWeight: "700",textAlign:"left", color: "#1f2937", marginBottom: "16px" }}>
             📋 Customer Details
           </h3>
-          <div className="form-group" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "16px" }}>
+          <div className="form-group" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
             <div>
               <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
                 Name
@@ -781,6 +975,25 @@ export default function Quotation({
                   border: "1px solid #d1d5db",
                   borderRadius: "6px",
                   fontSize: "14px",
+                }}
+              />
+            </div>
+                  <div>
+              <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
+                📍 Location
+              </label>
+              <input
+                type="text"
+                placeholder="Enter Customer location"
+                value={quotation.location || ""}
+                onChange={(e) => setQuotation({ ...quotation, location: e.target.value })}
+                className="form-input"
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  fontSize: "13px",
                 }}
               />
             </div>
@@ -964,22 +1177,34 @@ export default function Quotation({
                     </div>
                        <div>
               <label className="form-label" style={{ display: "block", fontSize: "12px", fontWeight: "600", color: "#6b7280", marginBottom: "6px" }}>
-                📍 Location
+                📍 Event Location
               </label>
-              <input
-                type="text"
-                placeholder="Enter event location"
-                value={quotation.location || ""}
-                onChange={(e) => setQuotation({ ...quotation, location: e.target.value })}
-                className="form-input"
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  border: "1px solid #d1d5db",
-                  borderRadius: "6px",
-                  fontSize: "13px",
-                }}
-              />
+             <input
+  type="text"
+  placeholder="Enter event location"
+  value={quotation.eventDates[activeRequirementTab]?.location || ""}
+  onChange={(e) =>
+    setQuotation({
+      ...quotation,
+      eventDates: {
+        ...quotation.eventDates,
+        [activeRequirementTab]: {
+          ...quotation.eventDates[activeRequirementTab],
+          location: e.target.value,
+        },
+      },
+    })
+  }
+  className="form-input"
+  style={{
+    width: "100%",
+    padding: "8px",
+    border: "1px solid #d1d5db",
+    borderRadius: "6px",
+    fontSize: "13px",
+  }}
+/>
+
             </div>
                     <div>
                       <label className="form-label" style={{ display: "block", fontSize: "11px", fontWeight: "600", color: "#6b7280", marginBottom: "4px" }}>
@@ -1413,6 +1638,25 @@ export default function Quotation({
             borderRadius: "12px",
             boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
           }}>
+            <button
+  onClick={saveQuotationToCustomer}
+  disabled={loading}
+  style={{
+    flex: 1,
+    padding: "14px 24px",
+    background: loading ? "#d1d5db" : "#8b5cf6",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    fontWeight: "700",
+    fontSize: "15px",
+    cursor: loading ? "not-allowed" : "pointer",
+    minWidth: "200px"
+  }}
+>
+  {loading ? "Saving..." : "💾 Save to Customer Details"}
+</button>
+
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
               <button
                 onClick={sendQuotationEmail}

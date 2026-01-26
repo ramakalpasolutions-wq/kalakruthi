@@ -240,6 +240,138 @@ setCustomers(sorted);
     );
   }
 
+const downloadCustomerPDF = async (customer) => {
+  const { jsPDF } = await import("jspdf");
+
+  const doc = new jsPDF("p", "mm", "a4");
+
+  const PAGE_WIDTH = doc.internal.pageSize.getWidth();
+  const PAGE_HEIGHT = doc.internal.pageSize.getHeight();
+  
+
+  const MARGIN = 20;
+  const CONTENT_WIDTH = PAGE_WIDTH - MARGIN * 2;
+  const ROW_H = 10;
+  const THEME = [16, 185, 129];
+
+  /* ---------- BACKGROUND ---------- */
+  doc.addImage("/letterhead.jpeg", "JPEG", 0, 0, PAGE_WIDTH, PAGE_HEIGHT);
+
+  let y = 30;
+
+  /* ---------- HEADER ---------- */
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("B2B CUSTOMER DETAILS", PAGE_WIDTH / 2, y, { align: "center" });
+
+  y += 6;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    "Business to Business Transaction Summary",
+    PAGE_WIDTH / 2,
+    y,
+    { align: "center" }
+  );
+
+  y += 30;
+
+  /* ---------- CUSTOMER DETAILS HEADER ---------- */
+  doc.setFillColor(...THEME);
+  doc.rect(MARGIN, y, CONTENT_WIDTH+15, 8, "F");
+  doc.setTextColor(255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("CUSTOMER DETAILS", PAGE_WIDTH / 2, y + 5.5, { align: "center" });
+
+  y += 8;
+
+  /* ---------- CUSTOMER DETAILS TABLE ---------- */
+  doc.setDrawColor(...THEME);
+  doc.rect(MARGIN, y, CONTENT_WIDTH +15, 30);
+
+  doc.setTextColor(0);
+  doc.setFontSize(11);
+
+  const leftX = MARGIN + 4;
+  const rightX = PAGE_WIDTH / 2 + 4;
+
+  const row = (x, label, value) => {
+    doc.setFont("helvetica", "bold");
+    doc.text(label, x, y + 7);
+    doc.setFont("helvetica", "normal");
+    doc.text(value || "-", x + 40, y + 7);
+  };
+
+  row(leftX, "Name :", customer.person);
+  row(rightX, "Date :", customer.date || "-");
+
+  y += ROW_H;
+  row(leftX, "Phone :", customer.phone);
+  row(rightX, "Camera :", customer.camera);
+
+  y += ROW_H;
+  row(leftX, "Studio :", customer.studio);
+  row(rightX, "Location :", customer.location);
+
+  y += 26;
+
+  /* ---------- PAYMENT TABLE HEADER ---------- */
+  doc.setFillColor(...THEME);
+  doc.rect(MARGIN, y, CONTENT_WIDTH, 8, "F");
+  doc.setTextColor(255);
+  doc.setFont("helvetica", "bold");
+  doc.text("Description", MARGIN + 6, y + 5.5);
+  doc.text("Amount", PAGE_WIDTH - MARGIN - 6, y + 5.5, { align: "right" });
+
+  y += 8;
+
+  /* ---------- PAYMENT TABLE BODY ---------- */
+  const tableRow = (label, value) => {
+    doc.setDrawColor(200);
+    doc.rect(MARGIN, y, CONTENT_WIDTH, ROW_H);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0);
+    doc.text(label, MARGIN + 6, y + 6.5);
+    doc.text(value, PAGE_WIDTH - MARGIN - 6, y + 6.5, { align: "right" });
+    y += ROW_H;
+  };
+
+  const formatAmount = (v) =>
+    `Rs ${Number(v || 0).toLocaleString("en-IN")}/-`;
+
+  const balance =
+    (parseFloat(customer.total) || 0) -
+    (parseFloat(customer.advance) || 0);
+
+  tableRow("Total Amount", formatAmount(customer.total));
+  tableRow("Paid Amount", formatAmount(customer.advance));
+
+  y += 16;
+
+  /* ---------- TOTAL DUE AMOUNT BOX ---------- */
+  doc.setDrawColor(...THEME);
+  doc.setLineWidth(1);
+  doc.rect(MARGIN, y, CONTENT_WIDTH, 20);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.setTextColor(...THEME);
+  doc.text("TOTAL DUE AMOUNT", PAGE_WIDTH / 2, y + 8, { align: "center" });
+
+  doc.setFontSize(14);
+  doc.setTextColor(220, 38, 38);
+  doc.text(formatAmount(balance), PAGE_WIDTH / 2, y + 15, {
+    align: "center",
+  });
+
+  doc.save(`B2B-${customer.studio}-${Date.now()}.pdf`);
+};
+
+
+
+
+
   return (
     <div style={{ padding: "20px", maxWidth: "1200px", margin: "0 auto" }}>
       {/* Header */}
@@ -443,6 +575,7 @@ setCustomers(sorted);
                       </td>
                       <td style={{ padding: "16px", textAlign: "center" }}>
                         <div style={{ display: "flex", gap: "8px", justifyContent: "center" }}>
+                          
                           <button 
                             onClick={() => editCustomer(c)} 
                             disabled={loading}
@@ -473,6 +606,21 @@ setCustomers(sorted);
                           >
                             Delete
                           </button>
+                          <button
+  onClick={() => downloadCustomerPDF(c)}
+  style={{
+    padding: "6px 12px",
+    background: "#10b981",
+    color: "white",
+    border: "none",
+    borderRadius: "5px",
+    fontSize: "12px",
+    cursor: "pointer",
+  }}
+>
+  PDF
+</button>
+
                         </div>
                       </td>
                     </tr>
@@ -585,6 +733,23 @@ setCustomers(sorted);
                     >
                       Delete
                     </button>
+                    <button
+  onClick={() => downloadCustomerPDF(c)}
+  style={{
+    flex: 1,
+    padding: "8px",
+    background: "#10b981",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    fontWeight: "600",
+    fontSize: "13px",
+    cursor: "pointer",
+  }}
+>
+  PDF
+</button>
+
                   </div>
                 </div>
               );

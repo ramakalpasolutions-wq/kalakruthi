@@ -22,8 +22,8 @@ const MENU = [
   { name: "Services", icon: MdMiscellaneousServices },
   { name: "Pricing List", icon: MdAttachMoney },
   { name: "Quotation", icon: MdRequestQuote },
-  { name: "B2B Customer", icon: MdBusiness },
   { name: "Customer Details", icon: MdPeople },
+  { name: "B2B Customer", icon: MdBusiness },
   { name: "Packages", icon: MdCardGiftcard },
 ]
 
@@ -162,6 +162,8 @@ export default function Sidebar({
                 justifyContent: isOpen ? 'flex-start' : 'center',
                 padding: isOpen ? '12px 20px' : '12px 0',
                 width: '100%',
+               borderBottom: '1px solid #0f8b99',
+
               }}
               title={!isOpen ? item.name : ''}
             >

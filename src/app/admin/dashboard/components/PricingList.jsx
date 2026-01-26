@@ -885,10 +885,22 @@ export default function PricingList({ quotationPricing, setQuotationPricing }) {
                 padding: '12px 0', 
                 borderBottom: '1px solid #f1f5f9'
               }}>
-                <div>
-                  <label className="mobile-label">Category</label>
-                  <span className="category-badge">{item.category}</span>
-                </div>
+               <div>
+  <label className="mobile-label">Category</label>
+
+  <select
+    style={selectInputStyle}
+    value={item.category}
+    onChange={(e) => updateItem(item.id, 'category', e.target.value)}
+  >
+    {categories.map(cat => (
+      <option key={cat} value={cat}>
+        {cat}
+      </option>
+    ))}
+  </select>
+</div>
+
                 
                 <div>
                   <label className="mobile-label">Brand</label>

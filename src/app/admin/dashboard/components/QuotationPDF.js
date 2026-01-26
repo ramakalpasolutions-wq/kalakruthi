@@ -1,6 +1,13 @@
-// QuotationPDF.js — WITH QUANTITY SUPPORT (FIXED IMPORT)
+// QuotationPDF-updated.js
+// QuotationPDF.js — UPDATED TO SHOW HALF DAY & FULL DAY SEPARATELY
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
+
+const getEquipmentModelName = (equipmentId, equipmentList) => {
+  const item = equipmentList.find(e => e.id === parseInt(equipmentId))
+  if (!item) return ""
+  return `${item.brand} ${item.model}`
+}
 
 const THEME_COLOR = [13, 148, 136]
 const SAFE_MARGIN = 15
@@ -8,16 +15,19 @@ const CONTENT_WIDTH = 180
 const PAGE_HEIGHT = 297
 
 const HEADER_SAFE_START_Y = 70
-const FOOTER_SAFE_END_Y = 260
+const FOOTER_SAFE_END_Y = 275
+const formatCurrency = (amount = 0) =>
+  `Rs ${Number(amount).toLocaleString("en-IN")}/-`
 
 const addPageHeader = (doc) => {
-  doc.addImage("/letterhead.jpeg", "JPEG", 0, 0, 210, PAGE_HEIGHT)
+  doc.addImage("/Quotation.jpeg", "JPEG", 0, 0, 210, PAGE_HEIGHT)
 }
 
 export const generateQuotationPDF = (
   quotation,
   calculateQuotationTotal,
-  showPrices = true
+  showPrices = true,
+  equipmentList = []
 ) => {
   const doc = new jsPDF({
     orientation: "portrait",
@@ -25,38 +35,52 @@ export const generateQuotationPDF = (
     format: "a4",
     compress: true,
   })
+  const PAGE_BOTTOM = doc.internal.pageSize.height - 15
 
   doc.setFont("helvetica", "normal")
 
   addPageHeader(doc)
 
-  const totals = calculateQuotationTotal()
-
   let equipmentActualTotal = 0
   let equipmentCustomerTotal = 0
 
-  const itemsByEvent = {}
+  // ✅ UPDATED: Group by EVENT + TIME SLOT
+  const itemsByEventAndTimeSlot = {}
 
-  // ✅ UPDATED: Extract equipment with quantity
   if (quotation.selectedEquipment) {
     Object.keys(quotation.selectedEquipment).forEach((eventType) => {
       const eventEquipment = quotation.selectedEquipment[eventType] || []
 
-      const eventItems = []
       eventEquipment.forEach((eq) => {
         if (eq.selected && eq.equipmentId && eq.equipmentId !== "Not Selected") {
           const quantity = eq.quantity || 1
           const unitActualPrice = eq.unitActualPrice || 0
           const unitCustomerPrice = eq.unitCustomerPrice || 0
-          
+
           const totalActual = unitActualPrice * quantity
           const totalCustomer = unitCustomerPrice * quantity
 
           equipmentActualTotal += totalActual
           equipmentCustomerTotal += totalCustomer
 
-          eventItems.push({
-            name: `${eq.category} - ${eq.timeSlot || "N/A"}`,
+          const modelName = getEquipmentModelName(eq.equipmentId, equipmentList)
+          const timeSlot = eq.timeSlot || "Full Day" // Default to Full Day
+
+          // ✅ Create key: "EventType - TimeSlot"
+          const key = `${eventType} - ${timeSlot}`
+
+          if (!itemsByEventAndTimeSlot[key]) {
+            itemsByEventAndTimeSlot[key] = {
+              eventType,
+              timeSlot,
+              items: [],
+            }
+          }
+
+          itemsByEventAndTimeSlot[key].items.push({
+            name: `${eq.category}${
+              modelName ? `\n${modelName}` : ""
+            }`,
             quantity: quantity,
             unitActualPrice: unitActualPrice,
             unitCustomerPrice: unitCustomerPrice,
@@ -65,10 +89,6 @@ export const generateQuotationPDF = (
           })
         }
       })
-
-      if (eventItems.length > 0) {
-        itemsByEvent[eventType] = eventItems
-      }
     })
   }
 
@@ -89,7 +109,6 @@ export const generateQuotationPDF = (
   doc.setFontSize(16)
   doc.setFont("helvetica", "bold")
   doc.setTextColor(...THEME_COLOR)
-  doc.text("QUOTATION", SAFE_MARGIN, 75)
 
   doc.setFontSize(9)
   doc.setTextColor(80)
@@ -104,7 +123,7 @@ export const generateQuotationPDF = (
   const CUSTOMER_BOX_Y = 82
   doc.setDrawColor(...THEME_COLOR)
   doc.setLineWidth(0.6)
-  doc.rect(SAFE_MARGIN, CUSTOMER_BOX_Y, CONTENT_WIDTH, 28)
+  doc.rect(SAFE_MARGIN, CUSTOMER_BOX_Y, CONTENT_WIDTH, 33)
 
   doc.setFillColor(...THEME_COLOR)
   doc.rect(SAFE_MARGIN, CUSTOMER_BOX_Y, CONTENT_WIDTH, 7, "F")
@@ -133,14 +152,18 @@ export const generateQuotationPDF = (
     SAFE_MARGIN + 3,
     CUSTOMER_BOX_Y + 23
   )
+  doc.text(
+    `Location: ${quotation.location || 'Not specified'}`,
+    SAFE_MARGIN + 3,
+    CUSTOMER_BOX_Y + 28
+  )
 
   // EVENT TABLE
   let contentY = CUSTOMER_BOX_Y + 35
 
-  // ✅ FIXED: Use autoTable function directly
   autoTable(doc, {
     startY: contentY,
-    head: [["Event", "Schedule"]],
+    head: [["Event", "Schedule", "Event Location"]],
     body: quotation.selectedEvents.map((e) => [
       e,
       quotation.eventDates?.[e]?.date
@@ -148,6 +171,7 @@ export const generateQuotationPDF = (
             quotation.eventDates[e].date
           ).toLocaleDateString("en-IN")} (${quotation.eventDates[e].timeSlot || "TBD"})`
         : "To be scheduled",
+      quotation.eventDates?.[e]?.location || "Not specified",
     ]),
     theme: "grid",
     headStyles: {
@@ -156,24 +180,28 @@ export const generateQuotationPDF = (
       fontStyle: "bold",
       fontSize: 9,
     },
-    bodyStyles: { 
-      fontSize: 8.5, 
+    bodyStyles: {
+      fontSize: 8.5,
       cellPadding: 3,
     },
-    margin: { left: SAFE_MARGIN, right: SAFE_MARGIN, top: 5, bottom: 5 },
   })
 
   contentY = doc.lastAutoTable.finalY + 10
 
   let equipmentHeaderPrinted = false
 
-  Object.keys(itemsByEvent).forEach((eventType, eventIndex) => {
-    const eventItems = itemsByEvent[eventType]
+  // ✅ UPDATED: Iterate through grouped items (Event + Time Slot)
+  Object.keys(itemsByEventAndTimeSlot).forEach((key) => {
+    const groupData = itemsByEventAndTimeSlot[key]
+    const eventItems = groupData.items
+    const eventType = groupData.eventType
+    const timeSlot = groupData.timeSlot
+
     const eventDate = quotation.eventDates?.[eventType]?.date
       ? new Date(quotation.eventDates[eventType].date).toLocaleDateString("en-IN")
       : "TBD"
 
-    if (contentY > FOOTER_SAFE_END_Y) {
+    if (contentY + 20 > PAGE_BOTTOM) {
       doc.addPage()
       addPageHeader(doc)
       contentY = HEADER_SAFE_START_Y
@@ -194,6 +222,7 @@ export const generateQuotationPDF = (
       equipmentHeaderPrinted = true
     }
 
+    // ✅ UPDATED: Show Event + TimeSlot in header
     doc.setFillColor(240, 253, 244)
     doc.setDrawColor(...THEME_COLOR)
     doc.setLineWidth(0.5)
@@ -203,34 +232,33 @@ export const generateQuotationPDF = (
     doc.setFont("helvetica", "bold")
     doc.setFontSize(9)
     doc.setTextColor(...THEME_COLOR)
-    doc.text(`${eventType} - ${eventDate}`, SAFE_MARGIN + 3, contentY + 4)
+    doc.text(
+      `${eventType} - ${timeSlot} - ${eventDate}`,
+      SAFE_MARGIN + 3,
+      contentY + 4
+    )
 
     contentY += 8
 
-    // ✅ Table headers with Quantity column
+    // Table headers
     const tableHeaders = showPrices
-      ? [["Item", "Qty", "Actual (₹)", "Customer (₹)"]]
-      : [["Item", "Qty", "Price (₹)"]]
+      ? [["Item", "Qty", "Actual (Rs)", "Customer (Rs)"]]
+      : [["Item", "Qty"]]
 
-    // ✅ Table body with quantity and total prices
+    // Table body
     const tableBody = eventItems.map((item) => {
       if (showPrices) {
         return [
           item.name,
           item.quantity.toString(),
-          `${item.unitActualPrice.toLocaleString("en-IN")} × ${item.quantity} = ${item.totalActual.toLocaleString("en-IN")}`,
-          `${item.unitCustomerPrice.toLocaleString("en-IN")} × ${item.quantity} = ${item.totalCustomer.toLocaleString("en-IN")}`,
+          `Rs ${item.unitActualPrice.toLocaleString("en-IN")} × ${item.quantity} = Rs ${item.totalActual.toLocaleString("en-IN")}`,
+          `Rs ${item.unitCustomerPrice.toLocaleString("en-IN")} × ${item.quantity} = Rs ${item.totalCustomer.toLocaleString("en-IN")}`,
         ]
       } else {
-        return [
-          item.name,
-          item.quantity.toString(),
-          `${item.unitCustomerPrice.toLocaleString("en-IN")} × ${item.quantity} = ${item.totalCustomer.toLocaleString("en-IN")}`,
-        ]
+        return [item.name, item.quantity.toString()]
       }
     })
 
-    // ✅ FIXED: Use autoTable function directly
     autoTable(doc, {
       startY: contentY,
       head: tableHeaders,
@@ -255,19 +283,18 @@ export const generateQuotationPDF = (
             3: { cellWidth: 50, halign: "right" },
           }
         : {
-            0: { cellWidth: 90, halign: "left" },
+            0: { cellWidth: 85, halign: "left" },
             1: { cellWidth: 20, halign: "center" },
-            2: { cellWidth: 60, halign: "right" },
           },
       margin: { left: SAFE_MARGIN, right: SAFE_MARGIN },
-      pageBreak: "avoid",
     })
 
     contentY = doc.lastAutoTable.finalY + 6
   })
 
+  // SHEETS SECTION
   if (sheetsQuantity > 0 && quotation.sheetsTypeId) {
-    if (contentY > FOOTER_SAFE_END_Y) {
+    if (contentY + 20 > PAGE_BOTTOM) {
       doc.addPage()
       addPageHeader(doc)
       contentY = HEADER_SAFE_START_Y
@@ -288,27 +315,20 @@ export const generateQuotationPDF = (
     contentY += 10
 
     const sheetsTableHeaders = showPrices
-      ? [["Description", "Qty", "Actual (₹)", "Customer (₹)"]]
-      : [["Description", "Qty", "Price (₹)"]]
+      ? [["Description", "Qty", "Actual (Rs)", "Customer (Rs)"]]
+      : [["Description", "Qty"]]
 
     const sheetsTableBody = showPrices
       ? [
           [
-            "Photo Sheets",
+            "Album Sheets",
             sheetsQuantity.toString(),
-            `${sheetsActualPrice.toLocaleString("en-IN")} × ${sheetsQuantity} = ${sheetsActualTotal.toLocaleString("en-IN")}`,
-            `${sheetsPricePerSheet.toLocaleString("en-IN")} × ${sheetsQuantity} = ${sheetsCustomerTotal.toLocaleString("en-IN")}`,
+            `Rs ${sheetsActualPrice.toLocaleString("en-IN")} × ${sheetsQuantity} = Rs ${sheetsActualTotal.toLocaleString("en-IN")}`,
+            `Rs ${sheetsPricePerSheet.toLocaleString("en-IN")} × ${sheetsQuantity} = Rs ${sheetsCustomerTotal.toLocaleString("en-IN")}`,
           ],
         ]
-      : [
-          [
-            "Photo Sheets",
-            sheetsQuantity.toString(),
-            `${sheetsPricePerSheet.toLocaleString("en-IN")} × ${sheetsQuantity} = ${sheetsCustomerTotal.toLocaleString("en-IN")}`,
-          ],
-        ]
+      : [["Album Sheets", sheetsQuantity.toString()]]
 
-    // ✅ FIXED: Use autoTable function directly
     autoTable(doc, {
       startY: contentY,
       head: sheetsTableHeaders,
@@ -333,9 +353,8 @@ export const generateQuotationPDF = (
             3: { cellWidth: 50, halign: "right" },
           }
         : {
-            0: { cellWidth: 90, halign: "left" },
+            0: { cellWidth: 85, halign: "left" },
             1: { cellWidth: 20, halign: "center" },
-            2: { cellWidth: 60, halign: "right" },
           },
       margin: { left: SAFE_MARGIN, right: SAFE_MARGIN },
       pageBreak: "avoid",
@@ -377,7 +396,7 @@ export const generateQuotationPDF = (
     doc.setTextColor(220, 38, 38)
     doc.text("Actual Price Total:", SAFE_MARGIN + 3, contentY)
     doc.text(
-      `₹ ${actualGrandTotal.toLocaleString("en-IN")}`,
+      `Rs ${actualGrandTotal.toLocaleString("en-IN")}/-`,
       PRICE_RIGHT_X,
       contentY,
       { align: "right" }
@@ -391,7 +410,7 @@ export const generateQuotationPDF = (
   doc.setFont("helvetica", "bold")
   doc.text("Customer Price Total:", SAFE_MARGIN + 3, contentY)
   doc.text(
-    `₹ ${customerGrandTotal.toLocaleString("en-IN")}`,
+    `Rs ${customerGrandTotal.toLocaleString("en-IN")}/-`,
     PRICE_RIGHT_X,
     contentY,
     { align: "right" }
@@ -403,7 +422,7 @@ export const generateQuotationPDF = (
     doc.setTextColor(220, 38, 38)
     doc.text(`Discount (${discountPercent}%):`, SAFE_MARGIN + 3, contentY)
     doc.text(
-      `-₹ ${discountAmount.toLocaleString("en-IN")}`,
+      `-Rs ${discountAmount.toLocaleString("en-IN")}/-`,
       PRICE_RIGHT_X,
       contentY,
       { align: "right" }
@@ -422,11 +441,234 @@ export const generateQuotationPDF = (
   doc.setTextColor(...THEME_COLOR)
   doc.text("FINAL AMOUNT:", SAFE_MARGIN + 3, contentY)
   doc.text(
-    `₹ ${finalTotal.toLocaleString("en-IN")}`,
+    `Rs ${finalTotal.toLocaleString("en-IN")}/-`,
     PRICE_RIGHT_X,
     contentY,
     { align: "right" }
   )
+
+  doc.addPage()
+  addPageHeader(doc)
+  doc.addImage("/Terms & Conditions.jpeg", "JPEG", 0, 0, 210, PAGE_HEIGHT)
+  return doc
+}
+
+const buildServiceList = (eventEquipment = []) => {
+  return eventEquipment
+    .filter(eq => eq.selected && eq.equipmentId !== "Not Selected")
+    .map(eq => {
+      const qty = eq.quantity || 1
+      return `${eq.category} (${eq.timeSlot || "N/A"}) - ${qty}`
+    })
+    .join("\n")
+}
+
+export const generateCustomerQuotationPDF = (
+  quotation,
+  calculateQuotationTotal,
+  equipmentList = []
+) => {
+  const doc = new jsPDF({
+    orientation: "portrait",
+    unit: "mm",
+    format: "a4",
+    compress: true,
+  })
+
+  addPageHeader(doc)
+  doc.setFont("helvetica", "normal")
+
+  const totals = calculateQuotationTotal()
+
+  const customerGrandTotal =
+    Number(totals.grandTotal?.replace(/,/g, "")) || 0
+
+  const discountPercent = Number(quotation.discount || 0)
+
+  const discountAmount = Math.round(
+    (customerGrandTotal * discountPercent) / 100
+  )
+
+  const finalTotal = customerGrandTotal - discountAmount
+
+  let contentY = HEADER_SAFE_START_Y
+
+  /* ---------- TITLE ---------- */
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(16)
+  doc.setTextColor(...THEME_COLOR)
+
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(9)
+  doc.setTextColor(80)
+  doc.text(
+    `Date: ${new Date().toLocaleDateString("en-IN")}`,
+    210 - SAFE_MARGIN,
+    60,
+    { align: "right" }
+  )
+
+  /* ---------- CUSTOMER INFO ---------- */
+  const CUSTOMER_BOX_Y = 82
+  doc.setDrawColor(...THEME_COLOR)
+  doc.rect(SAFE_MARGIN, CUSTOMER_BOX_Y, CONTENT_WIDTH, 33)
+
+  doc.setFillColor(...THEME_COLOR)
+  doc.rect(SAFE_MARGIN, CUSTOMER_BOX_Y, CONTENT_WIDTH, 7, "F")
+
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(10)
+  doc.setTextColor(255)
+  doc.text("CUSTOMER INFORMATION", SAFE_MARGIN + 3, CUSTOMER_BOX_Y + 5)
+
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(9)
+  doc.setTextColor(30)
+
+  doc.text(`Name: ${quotation.firstName} ${quotation.lastName || ""}`, SAFE_MARGIN + 3, CUSTOMER_BOX_Y + 13)
+  doc.text(`Phone: ${quotation.customerPhone}`, SAFE_MARGIN + 3, CUSTOMER_BOX_Y + 18)
+  doc.text(`Email: ${quotation.customerEmail}`, SAFE_MARGIN + 3, CUSTOMER_BOX_Y + 23)
+  doc.text(`Location: ${quotation.location || "Not specified"}`, SAFE_MARGIN + 3, CUSTOMER_BOX_Y + 28)
+
+  /* ---------- EVENTS TABLE ---------- */
+  contentY = CUSTOMER_BOX_Y + 37
+
+  autoTable(doc, {
+    startY: contentY,
+    head: [[
+      "Event",
+      "Schedule",
+      "Event Location",
+      "Services / Equipment"
+    ]],
+    body: quotation.selectedEvents.map((e) => [
+      e,
+      quotation.eventDates?.[e]?.date
+        ? `${new Date(
+            quotation.eventDates[e].date
+          ).toLocaleDateString("en-IN")} (${quotation.eventDates[e].timeSlot || "TBD"})`
+        : "To be scheduled",
+      quotation.eventDates?.[e]?.location || "Not specified",
+      buildServiceList(quotation.selectedEquipment?.[e]),
+    ]),
+    theme: "grid",
+    headStyles: {
+      fillColor: THEME_COLOR,
+      textColor: 255,
+      fontStyle: "bold",
+      fontSize: 9,
+      halign: "center",
+      valign: "middle",
+    },
+    bodyStyles: {
+      fontSize: 8.5,
+      cellPadding: 3,
+      halign: "center",
+      valign: "middle",
+      textColor: 30,
+    },
+    columnStyles: {
+      0: { cellWidth: 30 },
+      1: { cellWidth: 45 },
+      2: { cellWidth: 45 },
+      3: { cellWidth: 60 },
+    },
+    margin: { left: SAFE_MARGIN, right: SAFE_MARGIN },
+  })
+
+  contentY = doc.lastAutoTable.finalY + 2
+
+  /* ---------- ALBUM SHEETS ---------- */
+  if (quotation.sheetsCount > 0) {
+    doc.setFillColor(...THEME_COLOR)
+    doc.rect(SAFE_MARGIN, contentY, CONTENT_WIDTH, 7, "F")
+
+    doc.setFont("helvetica", "bold")
+    doc.setFontSize(10)
+    doc.setTextColor(255)
+
+    doc.text(
+      "ALBUM SHEETS",
+      SAFE_MARGIN + 3,
+      contentY + 5
+    )
+
+    doc.text(
+      String(quotation.sheetsCount),
+      SAFE_MARGIN + CONTENT_WIDTH / 2,
+      contentY + 5,
+      { align: "center" }
+    )
+
+    contentY += 14
+  }
+
+  contentY += 2
+
+  /* ---------- PAYMENT SUMMARY ---------- */
+  doc.setDrawColor(...THEME_COLOR)
+  doc.rect(SAFE_MARGIN, contentY, CONTENT_WIDTH, 32)
+
+  doc.setFillColor(...THEME_COLOR)
+  doc.rect(SAFE_MARGIN, contentY, CONTENT_WIDTH, 7, "F")
+
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(10)
+  doc.setTextColor(255)
+  doc.text("PAYMENT SUMMARY", SAFE_MARGIN + 3, contentY + 5)
+
+  contentY += 12
+  doc.setFont("helvetica", "normal")
+  doc.setFontSize(9)
+  doc.setTextColor(30)
+
+  doc.text("Customer Price Total:", SAFE_MARGIN + 3, contentY)
+  doc.text(
+    formatCurrency(customerGrandTotal),
+    SAFE_MARGIN + CONTENT_WIDTH - 3,
+    contentY,
+    { align: "right" }
+  )
+
+  contentY += 6
+
+  if (discountPercent > 0) {
+    doc.setTextColor(220, 38, 38)
+    doc.text(`Discount (${discountPercent}%):`, SAFE_MARGIN + 3, contentY)
+    doc.text(
+      `- ${formatCurrency(discountAmount)}`,
+      SAFE_MARGIN + CONTENT_WIDTH - 3,
+      contentY,
+      { align: "right" }
+    )
+    contentY += 6
+  }
+
+  doc.setDrawColor(...THEME_COLOR)
+  doc.line(
+    SAFE_MARGIN + 5,
+    contentY,
+    SAFE_MARGIN + CONTENT_WIDTH - 5,
+    contentY
+  )
+
+  contentY += 6
+
+  doc.setFont("helvetica", "bold")
+  doc.setFontSize(11)
+  doc.setTextColor(...THEME_COLOR)
+  doc.text("FINAL AMOUNT:", SAFE_MARGIN + 3, contentY)
+  doc.text(
+    formatCurrency(finalTotal),
+    SAFE_MARGIN + CONTENT_WIDTH - 3,
+    contentY,
+    { align: "right" }
+  )
+
+  /* ---------- TERMS PAGE ---------- */
+  doc.addPage()
+  addPageHeader(doc)
+  doc.addImage("/Terms & Conditions.jpeg", "JPEG", 0, 0, 210, PAGE_HEIGHT)
 
   return doc
 }

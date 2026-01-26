@@ -279,24 +279,31 @@ const handleAdvanceCountChange = (count) => {
 
 
   const updateAdvance = (index, field, value) => {
-    const newAdvances = [...formData.advances]
+  setFormData(prev => {
+    const newAdvances = [...prev.advances]
+
     newAdvances[index] = {
       ...newAdvances[index],
       [field]: value,
     }
+
     const totalPaid = newAdvances.reduce(
       (sum, adv) => sum + (Number(adv.amount) || 0),
       0
     )
-    const totalAmount = parseInt(formData.totalAmount) || 0
+
+    const totalAmount = Number(prev.totalAmount) || 0
     const dueAmount = totalAmount - totalPaid
-    setFormData({
-      ...formData,
+
+    return {
+      ...prev,
       advances: newAdvances,
       dueAmount,
       status: dueAmount <= 0 ? "Paid" : "Pending",
-    })
-  }
+    }
+  })
+}
+
 
   const apiRequest = useCallback(async (url, options = {}) => {
     try {
@@ -849,20 +856,22 @@ const handleAdvanceCountChange = (count) => {
 
         {active === "Packages" && <Packages />}
 
-        {active === "Quotation" && (
-          <Quotation
-            quotation={quotation}
-            setQuotation={setQuotation}
-              quotationPricing={quotationPricing}
-            activeRequirementTab={activeRequirementTab}
-            setActiveRequirementTab={setActiveRequirementTab}
-            newEventName={newEventName}
-            setNewEventName={setNewEventName}
-            loading={loading}
-            setLoading={setLoading}
-            showToast={showToast}
-          />
-        )}
+      {active === "Quotation" && (
+  <Quotation
+    quotation={quotation}
+    setQuotation={setQuotation}
+    quotationPricing={quotationPricing}
+    activeRequirementTab={activeRequirementTab}
+    setActiveRequirementTab={setActiveRequirementTab}
+    newEventName={newEventName}
+    setNewEventName={setNewEventName}
+    loading={loading}
+    setLoading={setLoading}
+    showToast={showToast}
+    refreshCustomers={refreshData}   // ✅ ADD THIS
+  />
+)}
+
 
         {/* ✅ ADDED: Pricing List Section */}
         {active === "Pricing List" && (

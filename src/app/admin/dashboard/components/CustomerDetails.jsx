@@ -1,6 +1,9 @@
 // CustomerDetails.jsx
 'use client'
-import React from 'react'
+import React, { useState } from 'react'
+import { generateInvoicePDF } from "./InvoicePDF"
+
+
 import { formatAmount } from './constants'
 
 export default function CustomerDetails({
@@ -27,7 +30,42 @@ export default function CustomerDetails({
   handleDeleteAllCustomers,
   loading
 }) {
- 
+ const [customerQuotations, setCustomerQuotations] = useState({})
+const loadCustomerQuotations = async (customerId) => {
+  if (!customerId) return
+
+  try {
+    const res = await fetch(`/api/quotations?customerId=${customerId}`)
+
+    if (!res.ok) return
+
+    const text = await res.text()
+    if (!text) {
+      setCustomerQuotations(prev => ({
+        ...prev,
+        [customerId]: []
+      }))
+      return
+    }
+
+    const data = JSON.parse(text)
+
+    setCustomerQuotations(prev => ({
+      ...prev,
+      [customerId]: data
+    }))
+  } catch (err) {
+    console.error("Failed to load quotations", err)
+  }
+}
+  
+const downloadBase64PDF = (base64, fileName) => {
+  const link = document.createElement("a")
+  link.href = `data:application/pdf;base64,${base64}`
+  link.download = fileName
+  link.click()
+}
+
   const filteredCustomers = customers
   .filter((c) => {
     if (customerFilter === "All") return true
@@ -567,7 +605,7 @@ export default function CustomerDetails({
             // MOBILE: Card View
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {filteredCustomers.map((customer) => {
-                const customerId = customer.id || customer._id
+                const customerId = customer._id
                 const totalPaid = (customer.advances || []).reduce(
                   (sum, adv) => sum + (Number(adv.amount) || 0),
                   0
@@ -590,11 +628,17 @@ export default function CustomerDetails({
                       padding: "16px",
                       color: "white",
                     }}>
-                     <h3
+                  <h3
   onClick={() => {
-    setOpenPaymentRowId(openPaymentRowId === customerId ? null : customerId)
+    const isOpening = openPaymentRowId !== customerId
+    setOpenPaymentRowId(isOpening ? customerId : null)
     setOpenAdvanceId(null)
+
+    if (isOpening) {
+      loadCustomerQuotations(customerId)
+    }
   }}
+
   style={{
     fontSize: "16px",
     fontWeight: "700",
@@ -829,7 +873,54 @@ export default function CustomerDetails({
                                 No advance payments recorded yet.
                               </p>
                             </div>
+
                           )}
+                          {customerQuotations[customerId]?.length > 0 && (
+  <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+    <button
+      onClick={() =>
+        downloadBase64PDF(
+          customerQuotations[customerId][0].pdfFiles.ownerPdf,
+          `${customer.name}_Owner_Quotation.pdf`
+        )
+      }
+      style={{
+        flex: 1,
+        padding: "10px",
+        background: "#3b82f6",
+        color: "white",
+        border: "none",
+        borderRadius: "6px",
+        fontSize: "12px",
+        fontWeight: "600",
+      }}
+    >
+      📥 Owner PDF
+    </button>
+
+    <button
+      onClick={() =>
+        downloadBase64PDF(
+          customerQuotations[customerId][0].pdfFiles.customerPdf,
+          `${customer.name}_Customer_Quotation.pdf`
+        )
+      }
+      style={{
+        flex: 1,
+        padding: "10px",
+        background: "#8b5cf6",
+        color: "white",
+        border: "none",
+        borderRadius: "6px",
+        fontSize: "12px",
+        fontWeight: "600",
+      }}
+    >
+      📄 Customer PDF
+    </button>
+  </div>
+)}
+
                         </div>
                       )}
                     </div>
@@ -877,7 +968,7 @@ export default function CustomerDetails({
                   </thead>
                   <tbody>
                     {filteredCustomers.map((customer) => {
-                      const customerId = customer.id || customer._id
+                      const customerId = customer._id
                       const totalPaid = (customer.advances || []).reduce(
                         (sum, adv) => sum + (Number(adv.amount) || 0),
                         0
@@ -897,9 +988,15 @@ export default function CustomerDetails({
                             </td> */}
                             <td
   onClick={() => {
-    setOpenPaymentRowId(openPaymentRowId === customerId ? null : customerId)
+    const isOpening = openPaymentRowId !== customerId
+    setOpenPaymentRowId(isOpening ? customerId : null)
     setOpenAdvanceId(null)
+
+    if (isOpening) {
+      loadCustomerQuotations(customerId)
+    }
   }}
+
   style={{
     padding: "16px",
     fontSize: "14px",
@@ -1097,6 +1194,72 @@ export default function CustomerDetails({
                                       </p>
                                     </div>
                                   )}
+                                  {customerQuotations[customerId]?.length > 0 && (
+  <div style={{ display: "flex", gap: "12px", marginTop: "16px" }}>
+ <button
+  onClick={() => {
+    const invoiceIndex =
+      filteredCustomers.findIndex(c => c._id === customerId) + 1
+
+    const invoiceNumber = `KAL ${String(invoiceIndex).padStart(3, "0")}`
+
+    generateInvoicePDF(customer, invoiceNumber)
+  }}
+  style={{
+    padding: "10px 16px",
+    background: "#16a34a",
+    color: "white",
+    border: "none",
+    borderRadius: "6px",
+    fontWeight: "600",
+  }}
+>
+  🧾 Invoice PDF
+</button>
+
+
+
+    <button
+      onClick={() =>
+        downloadBase64PDF(
+          customerQuotations[customerId][0].pdfFiles.ownerPdf,
+          `${customer.name}_Owner_Quotation.pdf`
+        )
+      }
+      style={{
+        padding: "10px 16px",
+        background: "#3b82f6",
+        color: "white",
+        border: "none",
+        borderRadius: "6px",
+        fontWeight: "600",
+      }}
+    >
+      📥 Owner PDF
+    </button>
+
+    <button
+      onClick={() =>
+        downloadBase64PDF(
+             customerQuotations[customerId][0].pdfFiles.customerPdf,
+
+          `${customer.name}_Customer_Quotation.pdf`
+        )
+      }
+      style={{
+        padding: "10px 16px",
+        background: "#8b5cf6",
+        color: "white",
+        border: "none",
+        borderRadius: "6px",
+        fontWeight: "600",
+      }}
+    >
+      📄 Customer PDF
+    </button>
+  </div>
+)}
+
                                 </div>
                               </td>
                             </tr>
