@@ -1163,7 +1163,7 @@ const saveQuotationToCustomer = async () => {
                           padding: "8px",
                           border: "1px solid #d1d5db",
                           borderRadius: "6px",
-                          fontSize: "13px",
+                          fontSize: "15px",
                         }}
                       />
                     </div>

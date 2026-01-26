@@ -80,6 +80,9 @@ export default function Footer() {
       <div className="footer-bottom">
         © {new Date().getFullYear()} Kalakruthi. All rights reserved.
       </div>
+       <div className="footer-bottom">
+         Powered By Ramakalpa Solutions.
+      </div>
     </footer>
   );
 }
