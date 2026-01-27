@@ -506,6 +506,12 @@ body {
   color: rgba(255, 255, 255, 0.7);
 }
 
+.footer-2 {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
 /* ================= RESPONSIVE ================= */
 /* ✅ DESKTOP: 4 columns (1200px+) */
 @media (min-width: 1200px) {
