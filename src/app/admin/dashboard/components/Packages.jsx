@@ -11,7 +11,7 @@ const packages = [
       "Traditional Video",
     ],
     color: "#3b82f6",
-    icon: "📸",
+    icon: "📸", 
   },
   {
     name: "Standard Package",

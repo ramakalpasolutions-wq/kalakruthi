@@ -33,6 +33,7 @@ export default function AdminDashboard() {
   const [newEventName, setNewEventName] = useState('')
   const [homeServices, setHomeServices] = useState([])
   const [activeTab, setActiveTab] = useState('photography')
+  const [sidebarExpanded, setSidebarExpanded] = useState(true)
 
   // Hero Section State
   const [heroImages, setHeroImages] = useState([])
@@ -65,6 +66,10 @@ export default function AdminDashboard() {
   const [openPaymentRowId, setOpenPaymentRowId] = useState(null)
   const [openAdvanceId, setOpenAdvanceId] = useState(null)
   const [selectedAdvanceCount, setSelectedAdvanceCount] = useState(0)
+
+
+  const [events, setEvents] = useState([])
+
   
   // Quotation State
   // Quotation State
@@ -208,74 +213,102 @@ const [quotation, setQuotation] = useState({
   
 
   // Customer Functions
-  const handleTotalAmountChange = (value) => {
-    const totalAmount = parseInt(value) || 0
-    const totalPaid = (formData.advances || []).reduce(
-      (sum, adv) => sum + (Number(adv.amount) || 0),
-      0
-    )
-    const dueAmount = totalAmount - totalPaid
-    setFormData({
-      ...formData,
-      totalAmount: value,
-      dueAmount: dueAmount,
-      status: dueAmount <= 0 ? "Paid" : "Pending",
+const handleTotalAmountChange = (value) => {
+  const totalAmount = Number(value) || 0
+  const autoAmount = Math.round(totalAmount * 0.25)
+
+  const updatedAdvances = formData.advances.map((adv, index) =>
+    adv.isAuto && index < 3
+      ? { ...adv, amount: autoAmount }
+      : adv
+  )
+
+  const totalPaid = updatedAdvances.reduce(
+    (sum, adv) => sum + (Number(adv.amount) || 0),
+    0
+  )
+
+  setFormData((prev) => ({
+    ...prev,
+    totalAmount,
+    advances: updatedAdvances,
+    dueAmount: totalAmount - totalPaid,
+  }))
+}
+
+
+
+
+const handleAdvanceCountChange = (count) => {
+  setSelectedAdvanceCount(count)
+
+  const totalAmount = Number(formData.totalAmount) || 0
+  const autoAmount = Math.round(totalAmount * 0.25)
+
+  const newAdvances = []
+
+  for (let i = 0; i < count; i++) {
+    const existing = formData.advances[i]
+
+    const shouldAuto =
+      i < 3 && (existing?.isAuto ?? true)
+
+    newAdvances.push({
+      ...existing,
+      amount: shouldAuto
+        ? autoAmount
+        : existing?.amount || "",
+      isAuto: shouldAuto,
+      date: existing?.date || "",
+      paymentMode: existing?.paymentMode || "",
+      upiApp: existing?.upiApp || "",
+      otherUpi: existing?.otherUpi || "",
     })
   }
 
-  const handleAdvanceCountChange = (count) => {
-    setSelectedAdvanceCount(count)
-    
-    const currentAdvances = formData.advances || []
-    const currentCount = currentAdvances.length
-    
-    let newAdvances = [...currentAdvances]
-    
-    if (count > currentCount) {
-      const additionalAdvances = Array.from({ length: count - currentCount }, () => ({
-        amount: "",
-        date: "",
-        paymentMode: "",
-      }))
-      newAdvances = [...currentAdvances, ...additionalAdvances]
-    } else if (count < currentCount) {
-      newAdvances = currentAdvances.slice(0, count)
-    }
-    
-    const totalPaid = newAdvances.reduce(
-      (sum, adv) => sum + (Number(adv.amount) || 0),
-      0
-    )
-    const totalAmount = parseInt(formData.totalAmount) || 0
-    const dueAmount = totalAmount - totalPaid
-    
-    setFormData({
-      ...formData,
-      advances: newAdvances,
-      dueAmount,
-      status: dueAmount <= 0 ? "Paid" : "Pending",
-    })
-  }
+  const totalPaid = newAdvances.reduce(
+    (sum, adv) => sum + (Number(adv.amount) || 0),
+    0
+  )
+
+  setFormData((prev) => ({
+    ...prev,
+    advances: newAdvances,
+    dueAmount: totalAmount - totalPaid,
+    status: totalAmount - totalPaid <= 0 ? "Paid" : "Pending",
+  }))
+}
+
+
+
+
 
   const updateAdvance = (index, field, value) => {
-    const newAdvances = [...formData.advances]
+  setFormData(prev => {
+    const newAdvances = [...prev.advances]
+
     newAdvances[index] = {
       ...newAdvances[index],
       [field]: value,
     }
+
     const totalPaid = newAdvances.reduce(
       (sum, adv) => sum + (Number(adv.amount) || 0),
       0
     )
-    const totalAmount = parseInt(formData.totalAmount) || 0
+
+    const totalAmount = Number(prev.totalAmount) || 0
     const dueAmount = totalAmount - totalPaid
-    setFormData({
-      ...formData,
+
+    return {
+      ...prev,
       advances: newAdvances,
       dueAmount,
       status: dueAmount <= 0 ? "Paid" : "Pending",
-    })
-  }
+    }
+  })
+}
+
 
   const apiRequest = useCallback(async (url, options = {}) => {
     try {
@@ -796,8 +829,20 @@ const [quotation, setQuotation] = useState({
       event.target.value = ""
     }
   }
+useEffect(() => {
+  fetch("/api/calendar-events")
+    .then(res => res.json())
+    .then(data => {
+      setEvents(Array.isArray(data) ? data : [])
+    })
+    .catch(err => {
+      console.error("Failed to load calendar events", err)
+      setEvents([])
+    })
+}, [])
 
   return (
+    
     <div className="dashboard-container">
       <Loading loading={loading} />
       <Toast toast={toast} />
@@ -818,6 +863,8 @@ const [quotation, setQuotation] = useState({
           <>
             <DashboardStats
               customers={customers}
+                events={events}   // 👈 calendar events array
+
               setActive={setActive}
               setCustomerFilter={setCustomerFilter}
             />
@@ -827,20 +874,22 @@ const [quotation, setQuotation] = useState({
 
         {active === "Packages" && <Packages />}
 
-        {active === "Quotation" && (
-          <Quotation
-            quotation={quotation}
-            setQuotation={setQuotation}
-              quotationPricing={quotationPricing}
-            activeRequirementTab={activeRequirementTab}
-            setActiveRequirementTab={setActiveRequirementTab}
-            newEventName={newEventName}
-            setNewEventName={setNewEventName}
-            loading={loading}
-            setLoading={setLoading}
-            showToast={showToast}
-          />
-        )}
+      {active === "Quotation" && (
+  <Quotation
+    quotation={quotation}
+    setQuotation={setQuotation}
+    quotationPricing={quotationPricing}
+    activeRequirementTab={activeRequirementTab}
+    setActiveRequirementTab={setActiveRequirementTab}
+    newEventName={newEventName}
+    setNewEventName={setNewEventName}
+    loading={loading}
+    setLoading={setLoading}
+    showToast={showToast}
+    refreshCustomers={refreshData}   // ✅ ADD THIS
+  />
+)}
+
 
         {/* ✅ ADDED: Pricing List Section */}
         {active === "Pricing List" && (

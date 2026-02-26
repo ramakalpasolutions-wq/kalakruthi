@@ -12,19 +12,29 @@ import {
   MdCardGiftcard,
   MdLogout,
   MdChevronLeft,
-  MdChevronRight
+  MdChevronRight,
+  MdExpandMore, // Added for dropdown arrow
+  MdExpandLess  // Added for dropdown arrow
 } from 'react-icons/md'
 
+// ✅ UPDATED MENU STRUCTURE
 const MENU = [
-  { name: "Dashboard", icon: MdDashboard },
-  { name: "Hero Section", icon: MdViewCarousel },
-  { name: "Gallery", icon: MdPhotoLibrary },
-  { name: "Services", icon: MdMiscellaneousServices },
+  { 
+    name: "Dashboard", 
+    icon: MdDashboard,
+    // Submenu items
+    submenu: [
+      { name: "Hero Section", icon: MdViewCarousel },
+      { name: "Gallery", icon: MdPhotoLibrary },
+      { name: "Services", icon: MdMiscellaneousServices },
+      { name: "Packages", icon: MdCardGiftcard },
+    ]
+  },
+  // Remaining items
   { name: "Pricing List", icon: MdAttachMoney },
   { name: "Quotation", icon: MdRequestQuote },
-  { name: "B2B Customer", icon: MdBusiness },
   { name: "Customer Details", icon: MdPeople },
-  { name: "Packages", icon: MdCardGiftcard },
+  { name: "B2B Customer", icon: MdBusiness },
 ]
 
 export default function Sidebar({
@@ -34,10 +44,13 @@ export default function Sidebar({
   setOpenAdvanceId
 }) {
   const [isDesktop, setIsDesktop] = useState(false)
-
-  // ✅ SEPARATE STATES
   const [desktopOpen, setDesktopOpen] = useState(true)
   const [mobileOpen, setMobileOpen] = useState(false)
+  
+  // ✅ NEW STATE FOR DASHBOARD DROPDOWN
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false)
+
+  const isOpen = isDesktop ? desktopOpen : mobileOpen
 
   // ✅ DETECT DESKTOP
   useEffect(() => {
@@ -49,6 +62,17 @@ export default function Sidebar({
     window.addEventListener("resize", handleResize)
     return () => window.removeEventListener("resize", handleResize)
   }, [])
+
+  // ✅ AUTO-EXPAND DASHBOARD IF A CHILD IS ACTIVE
+  useEffect(() => {
+    const dashboardItem = MENU.find(item => item.name === "Dashboard");
+    if (dashboardItem && dashboardItem.submenu) {
+      const isSubActive = dashboardItem.submenu.some(sub => sub.name === active);
+      if (isSubActive) {
+        setIsDashboardOpen(true);
+      }
+    }
+  }, [active]);
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -70,7 +94,6 @@ export default function Sidebar({
     }
   }
 
-  // ✅ TOGGLE BASED ON DEVICE
   const toggleSidebar = () => {
     if (isDesktop) {
       setDesktopOpen(prev => !prev)
@@ -91,7 +114,15 @@ export default function Sidebar({
     }
   }
 
-  const isOpen = isDesktop ? desktopOpen : mobileOpen
+  // Handle toggling the dropdown
+  const handleDropdownToggle = () => {
+    // If sidebar is closed, open it so user can see dropdown
+    if (!isOpen) {
+        if(isDesktop) setDesktopOpen(true);
+        else setMobileOpen(true);
+    }
+    setIsDashboardOpen(!isDashboardOpen);
+  }
 
   return (
     <>
@@ -151,6 +182,67 @@ export default function Sidebar({
         {/* MENU */}
         {MENU.map(item => {
           const Icon = item.icon
+          
+          // 🟢 CASE 1: ITEM HAS SUBMENU (DASHBOARD)
+          if (item.submenu) {
+            const isParentActive = item.submenu.some(sub => sub.name === active);
+            
+            return (
+              <div key={item.name} style={{ width: '100%' }}>
+                <button
+                  onClick={handleDropdownToggle}
+                  className={`dashboard-menu-btn ${isParentActive ? "active" : ""}`}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: isOpen ? 'space-between' : 'center', // Space between for arrow
+                    padding: isOpen ? '12px 20px' : '12px 0',
+                    width: '100%',
+                    borderBottom: '1px solid #0f8b99',
+                  }}
+                  title={!isOpen ? item.name : ''}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center' }}>
+                    <Icon size={30} />
+                    {isOpen && <span style={{ marginLeft: 12 }}>{item.name}</span>}
+                  </div>
+                  {isOpen && (
+                    isDashboardOpen ? <MdExpandLess size={24} /> : <MdExpandMore size={24} />
+                  )}
+                </button>
+
+                {/* DROPDOWN ITEMS */}
+                {isOpen && isDashboardOpen && (
+                  <div style={{ background: 'rgba(0,0,0,0.1)' }}>
+                    {item.submenu.map(subItem => {
+                      const SubIcon = subItem.icon;
+                      return (
+                        <button
+                          key={subItem.name}
+                          onClick={() => handleMenuClick(subItem.name)}
+                          className={`dashboard-menu-btn ${active === subItem.name ? "active" : ""}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-start',
+                            padding: '10px 20px 10px 45px', // Indented padding
+                            width: '100%',
+                            fontSize: '0.9em',
+                            borderBottom: '1px solid #0f8b99',
+                          }}
+                        >
+                          <SubIcon size={24} />
+                          <span style={{ marginLeft: 12 }}>{subItem.name}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+              </div>
+            )
+          }
+
+          // 🟢 CASE 2: REGULAR ITEM
           return (
             <button
               key={item.name}
@@ -162,6 +254,7 @@ export default function Sidebar({
                 justifyContent: isOpen ? 'flex-start' : 'center',
                 padding: isOpen ? '12px 20px' : '12px 0',
                 width: '100%',
+                borderBottom: '1px solid #0f8b99',
               }}
               title={!isOpen ? item.name : ''}
             >
